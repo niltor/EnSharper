@@ -25,6 +25,7 @@ namespace CodeFormatter
     /// </remarks>
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
     [Guid(CodeFormatterPackage.PackageGuidString)]
+    [ProvideOptionPage(typeof(AlignOptions), "Code Align", "General", 0, 0, true)]
     public sealed class CodeFormatterPackage : AsyncPackage
     {
         /// <summary>
