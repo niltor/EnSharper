@@ -67,7 +67,8 @@ namespace CodeFormatter
                 // Align parameters if more than 3
                 if (node.ParameterList.Parameters.Count > 3)
                 {
-                    var newParameterList = FormatParameterList(node.ParameterList, "        ");
+                    var indentation = DetectIndentation(node);
+                    var newParameterList = FormatParameterList(node.ParameterList, indentation);
                     node = node.WithParameterList(newParameterList);
                 }
 
@@ -79,11 +80,30 @@ namespace CodeFormatter
                 // Align parameters if more than 2
                 if (node.ParameterList.Parameters.Count > 2)
                 {
-                    var newParameterList = FormatParameterList(node.ParameterList, "        ");
+                    var indentation = DetectIndentation(node);
+                    var newParameterList = FormatParameterList(node.ParameterList, indentation);
                     node = node.WithParameterList(newParameterList);
                 }
 
                 return base.VisitConstructorDeclaration(node);
+            }
+
+            private string DetectIndentation(SyntaxNode node)
+            {
+                // Try to detect indentation from the node's leading trivia
+                var leadingTrivia = node.GetLeadingTrivia();
+                foreach (var trivia in leadingTrivia.Reverse())
+                {
+                    if (trivia.IsKind(SyntaxKind.WhitespaceTrivia))
+                    {
+                        var text = trivia.ToFullString();
+                        // Return the detected indentation plus one level (4 spaces default)
+                        return text + "    ";
+                    }
+                }
+
+                // Default to 8 spaces (2 levels of 4-space indentation)
+                return "        ";
             }
 
             private ParameterListSyntax FormatParameterList(ParameterListSyntax parameterList, string indentation)
@@ -248,20 +268,34 @@ namespace CodeFormatter
             {
                 if (statement is LocalDeclarationStatementSyntax localDecl)
                 {
-                    var firstVariable = localDecl.Declaration.Variables.FirstOrDefault();
-                    if (firstVariable?.Initializer != null)
+                    var variables = localDecl.Declaration.Variables;
+                    var newVariables = new SeparatedSyntaxList<VariableDeclaratorSyntax>();
+                    bool anyChanged = false;
+
+                    foreach (var variable in variables)
                     {
-                        var currentTrivia = firstVariable.Initializer.EqualsToken.LeadingTrivia;
-                        var newTrivia = currentTrivia.Insert(0, SyntaxFactory.Whitespace(new string(' ', spacesToAdd)));
-                        
-                        var newInitializer = firstVariable.Initializer.WithEqualsToken(
-                            firstVariable.Initializer.EqualsToken.WithLeadingTrivia(newTrivia)
-                        );
-                        
-                        var newVariable = firstVariable.WithInitializer(newInitializer);
-                        var newVariables = localDecl.Declaration.Variables.Replace(firstVariable, newVariable);
+                        if (variable.Initializer != null)
+                        {
+                            var currentTrivia = variable.Initializer.EqualsToken.LeadingTrivia;
+                            var newTrivia = currentTrivia.Insert(0, SyntaxFactory.Whitespace(new string(' ', spacesToAdd)));
+
+                            var newInitializer = variable.Initializer.WithEqualsToken(
+                                variable.Initializer.EqualsToken.WithLeadingTrivia(newTrivia)
+                            );
+
+                            var newVariable = variable.WithInitializer(newInitializer);
+                            newVariables = newVariables.Add(newVariable);
+                            anyChanged = true;
+                        }
+                        else
+                        {
+                            newVariables = newVariables.Add(variable);
+                        }
+                    }
+
+                    if (anyChanged)
+                    {
                         var newDeclaration = localDecl.Declaration.WithVariables(newVariables);
-                        
                         return localDecl.WithDeclaration(newDeclaration);
                     }
                 }

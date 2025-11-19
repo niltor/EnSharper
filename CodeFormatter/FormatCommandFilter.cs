@@ -1,6 +1,7 @@
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.OLE.Interop;
 using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Shell.Interop;
 using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.TextManager.Interop;
 using System;
@@ -146,7 +147,8 @@ namespace CodeFormatter
             }
             catch (Exception ex)
             {
-                // Log error to Debug output, but don't crash
+                // Log error to ActivityLog and Debug output, but don't crash
+                ActivityLog.LogError(nameof(FormatCommandFilter), ex.ToString());
                 System.Diagnostics.Debug.WriteLine($"Error in FormatCommandFilter: {ex}");
             }
         }
