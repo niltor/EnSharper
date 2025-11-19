@@ -104,9 +104,18 @@ namespace CodeFormatter
                 if (shell == null)
                     return;
 
-                // Try to get the package
+                // Try to get the package, loading it if necessary
                 var packageGuid = new Guid(CodeFormatterPackage.PackageGuidString);
-                shell.IsPackageLoaded(ref packageGuid, out IVsPackage package);
+                IVsPackage package;
+                
+                // Try to get the package if it's already loaded
+                shell.IsPackageLoaded(ref packageGuid, out package);
+                
+                // If not loaded, load it
+                if (package == null)
+                {
+                    shell.LoadPackage(ref packageGuid, out package);
+                }
                 
                 if (package is CodeFormatterPackage formatterPackage)
                 {
