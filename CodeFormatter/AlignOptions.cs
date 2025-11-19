@@ -13,7 +13,7 @@ namespace CodeFormatter
         [Description("Controls whether the plugin is active")]
         public bool EnablePlugin { get; set; } = true;
 
-        [Category("Alignment")]
+        [Category("General")]
         [DisplayName("Enable Align")]
         [Description("Controls whether the alignment feature is enabled")]
         public bool EnableAlign { get; set; } = true;

@@ -4,7 +4,6 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 
 namespace CodeFormatter
 {
@@ -32,9 +31,10 @@ namespace CodeFormatter
 
                 return newRoot.ToFullString();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // If parsing fails, return original code
+                // If parsing fails, log the exception and return original code
+                System.Diagnostics.Debug.WriteLine($"[AlignService.FormatCode] Exception: {ex.Message}");
                 return code;
             }
         }
@@ -142,10 +142,10 @@ namespace CodeFormatter
                 {
                     // Find consecutive assignment statements
                     var group = new List<int> { i };
-                    int currentLine = GetLineNumber(statements[i]);
                     
                     while (i + 1 < statements.Count)
                     {
+                        int currentLine = GetLineNumber(statements[group.Last()]);
                         int nextLine = GetLineNumber(statements[i + 1]);
                         
                         // Check if next statement is consecutive and is an assignment
@@ -153,7 +153,6 @@ namespace CodeFormatter
                         {
                             i++;
                             group.Add(i);
-                            currentLine = nextLine;
                         }
                         else
                         {
@@ -201,13 +200,7 @@ namespace CodeFormatter
             private List<StatementSyntax> AlignAssignmentGroup(List<StatementSyntax> allStatements, List<int> indices)
             {
                 // Find the position of the equals sign in each statement
-                var positions = new List<int>();
-                
-                foreach (var idx in indices)
-                {
-                    int pos = GetEqualsPosition(allStatements[idx]);
-                    positions.Add(pos);
-                }
+                var positions = indices.Select(idx => GetEqualsPosition(allStatements[idx])).ToList();
 
                 // Find maximum position
                 int maxPos = positions.Max();

@@ -12,6 +12,8 @@ namespace CodeFormatter
     /// </summary>
     internal sealed class FormatCommandFilter : IOleCommandTarget
     {
+        private const uint ECMD_FORMATDOCUMENT = 84;
+
         private readonly IWpfTextView textView;
         private readonly SVsServiceProvider serviceProvider;
         private readonly AlignService alignService;
@@ -52,8 +54,9 @@ namespace CodeFormatter
                 var editorAdapterFactory = componentModel.GetService<Microsoft.VisualStudio.Editor.IVsEditorAdaptersFactoryService>();
                 return editorAdapterFactory?.GetViewAdapter(textView);
             }
-            catch
+            catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"Exception in GetViewAdapter: {ex}");
                 return null;
             }
         }
@@ -73,7 +76,7 @@ namespace CodeFormatter
 
             // Check if this is a format document command
             // VSStd2K command group, Format Document command ID
-            if (pguidCmdGroup == VSConstants.VSStd2K && nCmdID == 84) // 84 is ECMD_FORMATDOCUMENT
+            if (pguidCmdGroup == VSConstants.VSStd2K && nCmdID == ECMD_FORMATDOCUMENT)
             {
                 // Execute the original format command first
                 int result = nextCommandTarget?.Exec(ref pguidCmdGroup, nCmdID, nCmdexecopt, pvaIn, pvaOut) ?? VSConstants.S_OK;
@@ -143,7 +146,7 @@ namespace CodeFormatter
             }
             catch (Exception ex)
             {
-                // Log error but don't crash
+                // Log error to Debug output, but don't crash
                 System.Diagnostics.Debug.WriteLine($"Error in FormatCommandFilter: {ex}");
             }
         }
