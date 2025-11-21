@@ -47,6 +47,29 @@ namespace CodeFormatter
             // When initialized asynchronously, the current thread may be a background thread at this point.
             // Do any initialization that requires the UI thread after switching to the UI thread.
             await this.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
+
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("[CodeFormatter] Package InitializeAsync - Starting");
+                Microsoft.VisualStudio.Shell.Interop.ActivityLog.LogInformation(
+                    "CodeFormatter.Package",
+                    "CodeFormatter extension package is being initialized"
+                );
+
+                System.Diagnostics.Debug.WriteLine("[CodeFormatter] Package InitializeAsync - Complete");
+                Microsoft.VisualStudio.Shell.Interop.ActivityLog.LogInformation(
+                    "CodeFormatter.Package",
+                    "CodeFormatter extension package initialized successfully"
+                );
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[CodeFormatter] ERROR in Package InitializeAsync: {ex}");
+                Microsoft.VisualStudio.Shell.Interop.ActivityLog.LogError(
+                    "CodeFormatter.Package",
+                    $"Error initializing package: {ex}"
+                );
+            }
         }
 
         #endregion

@@ -34,10 +34,38 @@ namespace CodeFormatter
         {
             ThreadHelper.ThrowIfNotOnUIThread();
 
-            var filter = new FormatCommandFilter(textView, serviceProvider);
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("[CodeFormatter] AddFilterToView - Creating filter");
 
-            var viewAdapter = GetViewAdapter(textView, serviceProvider);
-            viewAdapter?.AddCommandFilter(filter, out filter.nextCommandTarget);
+                var filter = new FormatCommandFilter(textView, serviceProvider);
+
+                var viewAdapter = GetViewAdapter(textView, serviceProvider);
+                if (viewAdapter != null)
+                {
+                    int hr = viewAdapter.AddCommandFilter(filter, out filter.nextCommandTarget);
+                    if (hr == VSConstants.S_OK)
+                    {
+                        System.Diagnostics.Debug.WriteLine("[CodeFormatter] AddFilterToView - Command filter added successfully");
+                        ActivityLog.LogInformation("CodeFormatter.FormatCommandFilter", "Format command filter installed successfully");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[CodeFormatter] AddFilterToView - Failed to add command filter. HRESULT: {hr}");
+                        ActivityLog.LogWarning("CodeFormatter.FormatCommandFilter", $"Failed to add command filter. HRESULT: {hr}");
+                    }
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("[CodeFormatter] AddFilterToView - ViewAdapter is null");
+                    ActivityLog.LogWarning("CodeFormatter.FormatCommandFilter", "Could not get view adapter - command filter not installed");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[CodeFormatter] ERROR in AddFilterToView: {ex}");
+                ActivityLog.LogError("CodeFormatter.FormatCommandFilter", $"Error adding filter to view: {ex}");
+            }
         }
 
         private static IVsTextView GetViewAdapter(
@@ -97,10 +125,15 @@ namespace CodeFormatter
             // VSStd2K command group, Format Document command ID
             if (pguidCmdGroup == VSConstants.VSStd2K && nCmdID == ECMD_FORMATDOCUMENT)
             {
+                System.Diagnostics.Debug.WriteLine("[CodeFormatter] Format Document command detected");
+                ActivityLog.LogInformation("CodeFormatter.FormatCommandFilter", "Format Document command intercepted");
+
                 // Execute the original format command first
                 int result =
                     nextCommandTarget?.Exec(ref pguidCmdGroup, nCmdID, nCmdexecopt, pvaIn, pvaOut)
                     ?? VSConstants.S_OK;
+
+                System.Diagnostics.Debug.WriteLine($"[CodeFormatter] Original format completed with result: {result}");
 
                 // Then apply our alignment
                 ApplyAlignment();
@@ -125,7 +158,9 @@ namespace CodeFormatter
 
         private void ApplyAlignment()
         {
+            System.Diagnostics.Debug.WriteLine("[CodeFormatter] ApplyAlignment - Starting alignment");
             AlignmentHelper.ApplyAlignment(textView, serviceProvider, alignService, checkFormatOnSave: false);
+            System.Diagnostics.Debug.WriteLine("[CodeFormatter] ApplyAlignment - Alignment complete");
         }
     }
 }
