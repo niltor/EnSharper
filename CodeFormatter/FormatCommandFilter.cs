@@ -1,10 +1,10 @@
+using System;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.OLE.Interop;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
 using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.TextManager.Interop;
-using System;
 
 namespace CodeFormatter
 {
@@ -27,32 +27,38 @@ namespace CodeFormatter
             this.alignService = new AlignService();
         }
 
-        public static void AddFilterToView(IWpfTextView textView, SVsServiceProvider serviceProvider)
+        public static void AddFilterToView(
+            IWpfTextView textView,
+            SVsServiceProvider serviceProvider
+        )
         {
             ThreadHelper.ThrowIfNotOnUIThread();
 
             var filter = new FormatCommandFilter(textView, serviceProvider);
-            
+
             var viewAdapter = GetViewAdapter(textView, serviceProvider);
-            if (viewAdapter != null)
-            {
-                viewAdapter.AddCommandFilter(filter, out filter.nextCommandTarget);
-            }
+            viewAdapter?.AddCommandFilter(filter, out filter.nextCommandTarget);
         }
 
-        private static IVsTextView GetViewAdapter(IWpfTextView textView, SVsServiceProvider serviceProvider)
+        private static IVsTextView GetViewAdapter(
+            IWpfTextView textView,
+            SVsServiceProvider serviceProvider
+        )
         {
             ThreadHelper.ThrowIfNotOnUIThread();
 
             try
             {
-                var componentModel = serviceProvider.GetService(typeof(Microsoft.VisualStudio.ComponentModelHost.SComponentModel)) 
-                    as Microsoft.VisualStudio.ComponentModelHost.IComponentModel;
-                
+                var componentModel =
+                    serviceProvider.GetService(
+                        typeof(Microsoft.VisualStudio.ComponentModelHost.SComponentModel)
+                    ) as Microsoft.VisualStudio.ComponentModelHost.IComponentModel;
+
                 if (componentModel == null)
                     return null;
 
-                var editorAdapterFactory = componentModel.GetService<Microsoft.VisualStudio.Editor.IVsEditorAdaptersFactoryService>();
+                var editorAdapterFactory =
+                    componentModel.GetService<Microsoft.VisualStudio.Editor.IVsEditorAdaptersFactoryService>();
                 return editorAdapterFactory?.GetViewAdapter(textView);
             }
             catch (Exception ex)
@@ -62,16 +68,28 @@ namespace CodeFormatter
             }
         }
 
-        public int QueryStatus(ref Guid pguidCmdGroup, uint cCmds, OLECMD[] prgCmds, IntPtr pCmdText)
+        public int QueryStatus(
+            ref Guid pguidCmdGroup,
+            uint cCmds,
+            OLECMD[] prgCmds,
+            IntPtr pCmdText
+        )
         {
+            ThreadHelper.ThrowIfNotOnUIThread();
             if (nextCommandTarget != null)
             {
                 return nextCommandTarget.QueryStatus(ref pguidCmdGroup, cCmds, prgCmds, pCmdText);
             }
-            return (int)Constants.OLECMDERR_E_NOTSUPPORTED;
+            return VSConstants.E_FAIL;
         }
 
-        public int Exec(ref Guid pguidCmdGroup, uint nCmdID, uint nCmdexecopt, IntPtr pvaIn, IntPtr pvaOut)
+        public int Exec(
+            ref Guid pguidCmdGroup,
+            uint nCmdID,
+            uint nCmdexecopt,
+            IntPtr pvaIn,
+            IntPtr pvaOut
+        )
         {
             ThreadHelper.ThrowIfNotOnUIThread();
 
@@ -80,7 +98,9 @@ namespace CodeFormatter
             if (pguidCmdGroup == VSConstants.VSStd2K && nCmdID == ECMD_FORMATDOCUMENT)
             {
                 // Execute the original format command first
-                int result = nextCommandTarget?.Exec(ref pguidCmdGroup, nCmdID, nCmdexecopt, pvaIn, pvaOut) ?? VSConstants.S_OK;
+                int result =
+                    nextCommandTarget?.Exec(ref pguidCmdGroup, nCmdID, nCmdexecopt, pvaIn, pvaOut)
+                    ?? VSConstants.S_OK;
 
                 // Then apply our alignment
                 ApplyAlignment();
@@ -91,10 +111,16 @@ namespace CodeFormatter
             // Pass other commands through
             if (nextCommandTarget != null)
             {
-                return nextCommandTarget.Exec(ref pguidCmdGroup, nCmdID, nCmdexecopt, pvaIn, pvaOut);
+                return nextCommandTarget.Exec(
+                    ref pguidCmdGroup,
+                    nCmdID,
+                    nCmdexecopt,
+                    pvaIn,
+                    pvaOut
+                );
             }
 
-            return (int)Constants.OLECMDERR_E_NOTSUPPORTED;
+            return VSConstants.E_FAIL;
         }
 
         private void ApplyAlignment()
@@ -111,19 +137,20 @@ namespace CodeFormatter
                 // Try to get the package, loading it if necessary
                 var packageGuid = new Guid(CodeFormatterPackage.PackageGuidString);
                 IVsPackage package;
-                
+
                 // Try to get the package if it's already loaded
                 shell.IsPackageLoaded(ref packageGuid, out package);
-                
+
                 // If not loaded, load it
                 if (package == null)
                 {
                     shell.LoadPackage(ref packageGuid, out package);
                 }
-                
+
                 if (package is CodeFormatterPackage formatterPackage)
                 {
-                    var options = formatterPackage.GetDialogPage(typeof(AlignOptions)) as AlignOptions;
+                    var options =
+                        formatterPackage.GetDialogPage(typeof(AlignOptions)) as AlignOptions;
 
                     // Check if alignment is enabled
                     if (options == null || !options.EnablePlugin || !options.EnableAlign)

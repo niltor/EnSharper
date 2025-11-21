@@ -5,6 +5,7 @@
         <DisplayName>CodeFormatter</DisplayName>
         <Description xml:space="preserve">Due to Microsoft's inaction, I have to  create code format, code align  extension.
 Better </Description>
+        <Preview>true</Preview>
     </Metadata>
     <Installation>
         <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[17.0, )">

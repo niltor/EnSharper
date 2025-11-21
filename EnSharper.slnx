@@ -4,9 +4,8 @@
     <Platform Name="arm64" />
     <Platform Name="x86" />
   </Configurations>
-  <Project Path="CodeFormatter/CodeFormatter.csproj">
+  <Project Path="D:/codes/EnSharper/CodeFormatter/CodeFormatter.csproj" Id="13bb23ba-5938-4938-b89a-8d1abc82ec17">
     <Platform Solution="*|arm64" Project="arm64" />
     <Platform Solution="*|x86" Project="x86" />
   </Project>
-  <Project Path="CodeFormatter.Tests/CodeFormatter.Tests.csproj" />
 </Solution>
