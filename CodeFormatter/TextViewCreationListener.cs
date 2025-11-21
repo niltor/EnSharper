@@ -20,6 +20,25 @@ namespace CodeFormatter
         {
             // Hook up the format command filter
             FormatCommandFilter.AddFilterToView(textView, ServiceProvider);
+
+            // Hook up the save listener
+            var saveListener = DocumentSaveListener.Create(textView, ServiceProvider);
+
+            // Store the listener in the text view properties so it doesn't get garbage collected
+            textView.Properties.GetOrCreateSingletonProperty(
+                typeof(DocumentSaveListener),
+                () => saveListener
+            );
+
+            // Clean up when the text view is closed
+            textView.Closed += (sender, args) =>
+            {
+                if (textView.Properties.TryGetProperty(typeof(DocumentSaveListener), out DocumentSaveListener listener))
+                {
+                    listener.Dispose();
+                    textView.Properties.RemoveProperty(typeof(DocumentSaveListener));
+                }
+            };
         }
     }
 }

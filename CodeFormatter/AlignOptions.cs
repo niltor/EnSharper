@@ -17,5 +17,10 @@ namespace CodeFormatter
         [DisplayName("Enable Align")]
         [Description("Controls whether the alignment feature is enabled")]
         public bool EnableAlign { get; set; } = true;
+
+        [Category("General")]
+        [DisplayName("Format On Save")]
+        [Description("Automatically apply alignment formatting when saving files")]
+        public bool FormatOnSave { get; set; } = true;
     }
 }

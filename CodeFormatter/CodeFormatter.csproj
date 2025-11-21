@@ -53,6 +53,7 @@
     <Compile Include="AlignService.cs" />
     <Compile Include="TextViewCreationListener.cs" />
     <Compile Include="FormatCommandFilter.cs" />
+    <Compile Include="DocumentSaveListener.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="source.extension.vsixmanifest">
