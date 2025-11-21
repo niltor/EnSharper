@@ -119,6 +119,19 @@ The alignment is applied after the standard Visual Studio formatting, ensuring c
 3. Build the solution
 4. The VSIX package will be generated in the `bin` folder
 
+## Debugging and Troubleshooting
+
+If you're experiencing issues with the extension or want to debug it:
+
+- 📖 **[中文调试指南](DEBUGGING.md)** - Comprehensive debugging guide in Chinese
+- 📖 **[English Debugging Guide](DEBUGGING_EN.md)** - Comprehensive debugging guide in English
+
+These guides cover:
+- How to set breakpoints and verify execution flow
+- Viewing diagnostic logs (Debug output and Activity Log)
+- Common issues and troubleshooting steps
+- Test cases to verify extension functionality
+
 ## License
 
 See the [LICENSE](LICENSE) file for details.
