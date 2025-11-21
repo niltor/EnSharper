@@ -98,118 +98,61 @@ namespace CodeFormatter
                 string pbstrMkDocument;
                 IVsHierarchy ppHier;
                 uint pitemid;
-                IntPtr ppunkDocData;
+                IntPtr ppunkDocData = IntPtr.Zero;
 
-                int hr = rdt.GetDocumentInfo(
-                    docCookie,
-                    out grfRDTFlags,
-                    out dwReadLocks,
-                    out dwEditLocks,
-                    out pbstrMkDocument,
-                    out ppHier,
-                    out pitemid,
-                    out ppunkDocData
-                );
-
-                if (hr != VSConstants.S_OK || string.IsNullOrEmpty(pbstrMkDocument))
-                    return VSConstants.S_OK;
-
-                // Check if this is a C# file
-                if (!pbstrMkDocument.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
-                    return VSConstants.S_OK;
-
-                // Check if this is the document for our text view
-                var textBuffer = textView.TextBuffer;
-                if (textBuffer == null)
-                    return VSConstants.S_OK;
-
-                // Get the file path for the current text view
-                ITextDocument textDocument;
-                if (textBuffer.Properties.TryGetProperty(typeof(ITextDocument), out textDocument))
+                try
                 {
-                    if (textDocument.FilePath != pbstrMkDocument)
+                    int hr = rdt.GetDocumentInfo(
+                        docCookie,
+                        out grfRDTFlags,
+                        out dwReadLocks,
+                        out dwEditLocks,
+                        out pbstrMkDocument,
+                        out ppHier,
+                        out pitemid,
+                        out ppunkDocData
+                    );
+
+                    if (hr != VSConstants.S_OK || string.IsNullOrEmpty(pbstrMkDocument))
                         return VSConstants.S_OK;
 
-                    // Apply alignment if enabled
-                    ApplyAlignment();
-                }
-            }
-            catch (Exception ex)
-            {
-                // Log error but don't prevent save
-                System.Diagnostics.Debug.WriteLine($"Error in OnBeforeSave: {ex}");
-            }
+                    // Check if this is a C# file
+                    if (!pbstrMkDocument.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
+                        return VSConstants.S_OK;
 
-            return VSConstants.S_OK;
-        }
+                    // Check if this is the document for our text view
+                    var textBuffer = textView.TextBuffer;
+                    if (textBuffer == null)
+                        return VSConstants.S_OK;
 
-        private void ApplyAlignment()
-        {
-            ThreadHelper.ThrowIfNotOnUIThread();
-
-            try
-            {
-                // Get options
-                var shell = serviceProvider.GetService(typeof(SVsShell)) as IVsShell;
-                if (shell == null)
-                    return;
-
-                // Try to get the package
-                var packageGuid = new Guid(CodeFormatterPackage.PackageGuidString);
-                IVsPackage package;
-
-                // Try to get the package if it's already loaded
-                int hr = shell.IsPackageLoaded(ref packageGuid, out package);
-                if (hr != VSConstants.S_OK)
-                    return;
-
-                // If not loaded, load it
-                if (package == null)
-                {
-                    hr = shell.LoadPackage(ref packageGuid, out package);
-                    if (hr != VSConstants.S_OK)
-                        return;
-                }
-
-                if (package is CodeFormatterPackage formatterPackage)
-                {
-                    var options = formatterPackage.GetDialogPage(typeof(AlignOptions)) as AlignOptions;
-
-                    // Check if plugin, alignment, and format-on-save are all enabled
-                    if (options == null || !options.EnablePlugin || !options.EnableAlign || !options.FormatOnSave)
-                        return;
-
-                    // Get the current snapshot and text
-                    var snapshot = textView.TextBuffer.CurrentSnapshot;
-                    var text = snapshot.GetText();
-
-                    // Format the code
-                    var formattedText = alignService.FormatCode(text);
-
-                    if (formattedText != text)
+                    // Get the file path for the current text view
+                    ITextDocument textDocument;
+                    if (textBuffer.Properties.TryGetProperty(typeof(ITextDocument), out textDocument))
                     {
-                        // Apply the changes using the same snapshot we read from
-                        var edit = textView.TextBuffer.CreateEdit();
-                        // Verify snapshot hasn't changed
-                        if (edit.Snapshot == snapshot)
-                        {
-                            edit.Replace(0, snapshot.Length, formattedText);
-                            edit.Apply();
-                        }
-                        else
-                        {
-                            // Snapshot changed, cancel the edit
-                            edit.Cancel();
-                            System.Diagnostics.Debug.WriteLine("DocumentSaveListener: Snapshot changed during formatting, skipping alignment");
-                        }
+                        if (textDocument.FilePath != pbstrMkDocument)
+                            return VSConstants.S_OK;
+
+                        // Apply alignment if enabled
+                        AlignmentHelper.ApplyAlignment(textView, serviceProvider, alignService, checkFormatOnSave: true);
+                    }
+                }
+                finally
+                {
+                    // Release the COM object to prevent leaks
+                    if (ppunkDocData != IntPtr.Zero)
+                    {
+                        System.Runtime.InteropServices.Marshal.Release(ppunkDocData);
                     }
                 }
             }
             catch (Exception ex)
             {
-                // Log error but don't crash
-                System.Diagnostics.Debug.WriteLine($"Error in ApplyAlignment: {ex}");
+                // Log error but don't prevent save
+                ActivityLog.LogError("CodeFormatter.DocumentSaveListener", $"Error in OnBeforeSave: {ex}");
+                System.Diagnostics.Debug.WriteLine($"Error in OnBeforeSave: {ex}");
             }
+
+            return VSConstants.S_OK;
         }
 
         #endregion

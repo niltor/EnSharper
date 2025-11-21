@@ -51,6 +51,7 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="AlignService.cs" />
+    <Compile Include="AlignmentHelper.cs" />
     <Compile Include="TextViewCreationListener.cs" />
     <Compile Include="FormatCommandFilter.cs" />
     <Compile Include="DocumentSaveListener.cs" />
