@@ -11,7 +11,7 @@ namespace CodeFormatter
     /// <summary>
     /// Listens to document save events and applies alignment formatting
     /// </summary>
-    internal sealed class DocumentSaveListener : IVsRunningDocTableEvents3
+    internal sealed class DocumentSaveListener : IVsRunningDocTableEvents3, IDisposable
     {
         private readonly IWpfTextView textView;
         private readonly SVsServiceProvider serviceProvider;
@@ -149,11 +149,17 @@ namespace CodeFormatter
                 var packageGuid = new Guid(CodeFormatterPackage.PackageGuidString);
                 IVsPackage package;
 
-                shell.IsPackageLoaded(ref packageGuid, out package);
+                // Try to get the package if it's already loaded
+                int hr = shell.IsPackageLoaded(ref packageGuid, out package);
+                if (hr != VSConstants.S_OK)
+                    return;
 
+                // If not loaded, load it
                 if (package == null)
                 {
-                    shell.LoadPackage(ref packageGuid, out package);
+                    hr = shell.LoadPackage(ref packageGuid, out package);
+                    if (hr != VSConstants.S_OK)
+                        return;
                 }
 
                 if (package is CodeFormatterPackage formatterPackage)

@@ -139,12 +139,16 @@ namespace CodeFormatter
                 IVsPackage package;
 
                 // Try to get the package if it's already loaded
-                shell.IsPackageLoaded(ref packageGuid, out package);
+                int hr = shell.IsPackageLoaded(ref packageGuid, out package);
+                if (hr != VSConstants.S_OK)
+                    return;
 
                 // If not loaded, load it
                 if (package == null)
                 {
-                    shell.LoadPackage(ref packageGuid, out package);
+                    hr = shell.LoadPackage(ref packageGuid, out package);
+                    if (hr != VSConstants.S_OK)
+                        return;
                 }
 
                 if (package is CodeFormatterPackage formatterPackage)
