@@ -179,7 +179,7 @@ namespace CodeFormatter
                     if (options == null || !options.EnablePlugin || !options.EnableAlign || !options.FormatOnSave)
                         return;
 
-                    // Get the current text
+                    // Get the current snapshot and text
                     var snapshot = textView.TextBuffer.CurrentSnapshot;
                     var text = snapshot.GetText();
 
@@ -188,10 +188,20 @@ namespace CodeFormatter
 
                     if (formattedText != text)
                     {
-                        // Apply the changes
+                        // Apply the changes using the same snapshot we read from
                         var edit = textView.TextBuffer.CreateEdit();
-                        edit.Replace(0, snapshot.Length, formattedText);
-                        edit.Apply();
+                        // Verify snapshot hasn't changed
+                        if (edit.Snapshot == snapshot)
+                        {
+                            edit.Replace(0, snapshot.Length, formattedText);
+                            edit.Apply();
+                        }
+                        else
+                        {
+                            // Snapshot changed, cancel the edit
+                            edit.Cancel();
+                            System.Diagnostics.Debug.WriteLine("DocumentSaveListener: Snapshot changed during formatting, skipping alignment");
+                        }
                     }
                 }
             }
