@@ -47,7 +47,12 @@ namespace CodeFormatter
                 rdt = serviceProvider.GetService(typeof(SVsRunningDocumentTable)) as IVsRunningDocumentTable;
                 if (rdt != null)
                 {
-                    rdt.AdviseRunningDocTableEvents(this, out rdtCookie);
+                    int hr = rdt.AdviseRunningDocTableEvents(this, out rdtCookie);
+                    if (hr != VSConstants.S_OK)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Failed to advise running doc table events. HRESULT: {hr}");
+                        rdtCookie = 0;
+                    }
                 }
             }
             catch (Exception ex)
@@ -64,7 +69,11 @@ namespace CodeFormatter
             {
                 try
                 {
-                    rdt.UnadviseRunningDocTableEvents(rdtCookie);
+                    int hr = rdt.UnadviseRunningDocTableEvents(rdtCookie);
+                    if (hr != VSConstants.S_OK)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Failed to unadvise running doc table events. HRESULT: {hr}");
+                    }
                     rdtCookie = 0;
                 }
                 catch (Exception ex)
@@ -230,11 +239,6 @@ namespace CodeFormatter
         public int OnAfterAttributeChangeEx(uint docCookie, uint grfAttribs, IVsHierarchy pHierOld, uint itemidOld, string pszMkDocumentOld, IVsHierarchy pHierNew, uint itemidNew, string pszMkDocumentNew)
         {
             return VSConstants.S_OK;
-        }
-
-        int IVsRunningDocTableEvents3.OnBeforeSave(uint docCookie)
-        {
-            return OnBeforeSave(docCookie);
         }
 
         #endregion
