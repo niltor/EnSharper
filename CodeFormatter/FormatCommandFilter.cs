@@ -125,59 +125,7 @@ namespace CodeFormatter
 
         private void ApplyAlignment()
         {
-            ThreadHelper.ThrowIfNotOnUIThread();
-
-            try
-            {
-                // Get options
-                var shell = serviceProvider.GetService(typeof(SVsShell)) as IVsShell;
-                if (shell == null)
-                    return;
-
-                // Try to get the package, loading it if necessary
-                var packageGuid = new Guid(CodeFormatterPackage.PackageGuidString);
-                IVsPackage package;
-
-                // Try to get the package if it's already loaded
-                shell.IsPackageLoaded(ref packageGuid, out package);
-
-                // If not loaded, load it
-                if (package == null)
-                {
-                    shell.LoadPackage(ref packageGuid, out package);
-                }
-
-                if (package is CodeFormatterPackage formatterPackage)
-                {
-                    var options =
-                        formatterPackage.GetDialogPage(typeof(AlignOptions)) as AlignOptions;
-
-                    // Check if alignment is enabled
-                    if (options == null || !options.EnablePlugin || !options.EnableAlign)
-                        return;
-
-                    // Get the current text
-                    var snapshot = textView.TextBuffer.CurrentSnapshot;
-                    var text = snapshot.GetText();
-
-                    // Format the code
-                    var formattedText = alignService.FormatCode(text);
-
-                    if (formattedText != text)
-                    {
-                        // Apply the changes
-                        var edit = textView.TextBuffer.CreateEdit();
-                        edit.Replace(0, snapshot.Length, formattedText);
-                        edit.Apply();
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                // Log error to ActivityLog and Debug output, but don't crash
-                ActivityLog.LogError(nameof(FormatCommandFilter), ex.ToString());
-                System.Diagnostics.Debug.WriteLine($"Error in FormatCommandFilter: {ex}");
-            }
+            AlignmentHelper.ApplyAlignment(textView, serviceProvider, alignService, checkFormatOnSave: false);
         }
     }
 }

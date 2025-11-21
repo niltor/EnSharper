@@ -75,14 +75,28 @@ The extension can be configured through Visual Studio's Options dialog:
 3. Configure the following settings:
    - **Enable Plugin**: Controls whether the extension is active (default: `true`)
    - **Enable Align**: Controls whether the alignment features are enabled (default: `true`)
+   - **Format On Save**: Automatically apply alignment formatting when saving files (default: `true`)
 
 ## Usage
 
-The extension automatically integrates with Visual Studio's Format Document command:
+The extension integrates seamlessly with Visual Studio's formatting features:
+
+### Format Document
 
 1. Open a C# file in Visual Studio
-2. Press **Ctrl+K, Ctrl+D** (or use **Edit** > **Advanced** > **Format Document**)
+2. Press your configured format document shortcut (default: **Ctrl+K, Ctrl+D**) or use **Edit** > **Advanced** > **Format Document**
 3. The extension will apply alignment formatting in addition to standard formatting
+
+### Format On Save
+
+When **Format On Save** is enabled in the options:
+
+1. Open a C# file in Visual Studio
+2. Make your changes
+3. Save the file (Ctrl+S or File > Save)
+4. The extension will automatically apply alignment formatting when you save
+
+This feature works non-intrusively - it only applies alignment formatting, without affecting any other save operations or triggering unwanted side effects.
 
 ## Requirements
 
