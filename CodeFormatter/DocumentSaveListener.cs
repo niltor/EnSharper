@@ -105,8 +105,6 @@ namespace CodeFormatter
 
             try
             {
-                System.Diagnostics.Debug.WriteLine($"[CodeFormatter] OnBeforeSave - docCookie: {docCookie}");
-
                 // Get the document info
                 uint grfRDTFlags;
                 uint dwReadLocks;
@@ -131,18 +129,16 @@ namespace CodeFormatter
 
                     if (hr != VSConstants.S_OK || string.IsNullOrEmpty(pbstrMkDocument))
                     {
-                        System.Diagnostics.Debug.WriteLine($"[CodeFormatter] OnBeforeSave - GetDocumentInfo failed or no document path. HRESULT: {hr}");
                         return VSConstants.S_OK;
                     }
-
-                    System.Diagnostics.Debug.WriteLine($"[CodeFormatter] OnBeforeSave - Document: {pbstrMkDocument}");
 
                     // Check if this is a C# file
                     if (!pbstrMkDocument.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
                     {
-                        System.Diagnostics.Debug.WriteLine("[CodeFormatter] OnBeforeSave - Not a C# file, skipping");
                         return VSConstants.S_OK;
                     }
+
+                    System.Diagnostics.Debug.WriteLine($"[CodeFormatter] OnBeforeSave - C# file: {pbstrMkDocument}");
 
                     // Check if this is the document for our text view
                     var textBuffer = textView.TextBuffer;
@@ -158,11 +154,11 @@ namespace CodeFormatter
                     {
                         if (textDocument.FilePath != pbstrMkDocument)
                         {
-                            System.Diagnostics.Debug.WriteLine($"[CodeFormatter] OnBeforeSave - Document path mismatch: {textDocument.FilePath} != {pbstrMkDocument}");
+                            System.Diagnostics.Debug.WriteLine($"[CodeFormatter] OnBeforeSave - Document path mismatch");
                             return VSConstants.S_OK;
                         }
 
-                        System.Diagnostics.Debug.WriteLine("[CodeFormatter] OnBeforeSave - Applying alignment for C# file");
+                        System.Diagnostics.Debug.WriteLine("[CodeFormatter] OnBeforeSave - Applying alignment");
                         ActivityLog.LogInformation("CodeFormatter.DocumentSaveListener", $"Applying alignment on save for: {pbstrMkDocument}");
 
                         // Apply alignment if enabled

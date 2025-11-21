@@ -101,8 +101,6 @@ namespace CodeFormatter
                     var snapshot = textView.TextBuffer.CurrentSnapshot;
                     var text = snapshot.GetText();
 
-                    System.Diagnostics.Debug.WriteLine($"[CodeFormatter] ApplyAlignment - Text length: {text.Length}");
-
                     // Format the code
                     var formattedText = alignService.FormatCode(text);
 

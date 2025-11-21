@@ -43,16 +43,16 @@ namespace CodeFormatter
                 var viewAdapter = GetViewAdapter(textView, serviceProvider);
                 if (viewAdapter != null)
                 {
-                    int hr = viewAdapter.AddCommandFilter(filter, out filter.nextCommandTarget);
-                    if (hr == VSConstants.S_OK)
+                    int addFilterResult = viewAdapter.AddCommandFilter(filter, out filter.nextCommandTarget);
+                    if (addFilterResult == VSConstants.S_OK)
                     {
                         System.Diagnostics.Debug.WriteLine("[CodeFormatter] AddFilterToView - Command filter added successfully");
                         ActivityLog.LogInformation("CodeFormatter.FormatCommandFilter", "Format command filter installed successfully");
                     }
                     else
                     {
-                        System.Diagnostics.Debug.WriteLine($"[CodeFormatter] AddFilterToView - Failed to add command filter. HRESULT: {hr}");
-                        ActivityLog.LogWarning("CodeFormatter.FormatCommandFilter", $"Failed to add command filter. HRESULT: {hr}");
+                        System.Diagnostics.Debug.WriteLine($"[CodeFormatter] AddFilterToView - Failed to add command filter. HRESULT: {addFilterResult}");
+                        ActivityLog.LogWarning("CodeFormatter.FormatCommandFilter", $"Failed to add command filter. HRESULT: {addFilterResult}");
                     }
                 }
                 else
