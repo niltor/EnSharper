@@ -24,6 +24,7 @@ namespace CodeFormatter
     /// </para>
     /// </remarks>
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
+    [ProvideAutoLoad(Microsoft.VisualStudio.Shell.Interop.UIContextGuids80.SolutionExists, PackageAutoLoadFlags.BackgroundLoad)]
     [Guid(CodeFormatterPackage.PackageGuidString)]
     [ProvideOptionPage(typeof(AlignOptions), "Code Align", "General", 0, 0, true)]
     public sealed class CodeFormatterPackage : AsyncPackage

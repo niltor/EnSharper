@@ -44,7 +44,15 @@ namespace CodeFormatter
 
             try
             {
-                rdt = serviceProvider.GetService(typeof(SVsRunningDocumentTable)) as IVsRunningDocumentTable;
+                // GetService can return null; check before casting
+                var svc = serviceProvider.GetService(typeof(SVsRunningDocumentTable));
+                if (svc == null)
+                {
+                    System.Diagnostics.Debug.WriteLine("SVsRunningDocumentTable service not available.");
+                    return;
+                }
+
+                rdt = svc as IVsRunningDocumentTable;
                 if (rdt != null)
                 {
                     int hr = rdt.AdviseRunningDocTableEvents(this, out rdtCookie);

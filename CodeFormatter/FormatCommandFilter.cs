@@ -125,6 +125,7 @@ namespace CodeFormatter
 
         private void ApplyAlignment()
         {
+            ThreadHelper.ThrowIfNotOnUIThread();
             AlignmentHelper.ApplyAlignment(textView, serviceProvider, alignService, checkFormatOnSave: false);
         }
     }

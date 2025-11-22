@@ -2,6 +2,7 @@ using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Utilities;
 using System.ComponentModel.Composition;
+using System.Diagnostics;
 
 namespace CodeFormatter
 {
@@ -16,8 +17,13 @@ namespace CodeFormatter
         [Import]
         internal SVsServiceProvider ServiceProvider { get; set; }
 
+
+
         public void TextViewCreated(IWpfTextView textView)
         {
+            // Ensure we are on UI thread before interacting with VS services / editor
+            ThreadHelper.ThrowIfNotOnUIThread();
+
             // Hook up the format command filter
             FormatCommandFilter.AddFilterToView(textView, ServiceProvider);
 
@@ -33,6 +39,10 @@ namespace CodeFormatter
             // Clean up when the text view is closed
             textView.Closed += (sender, args) =>
             {
+                // Closed is raised on the UI thread, but assert to satisfy analyzers
+                ThreadHelper.ThrowIfNotOnUIThread();
+
+
                 if (textView.Properties.TryGetProperty(typeof(DocumentSaveListener), out DocumentSaveListener listener))
                 {
                     listener.Dispose();
