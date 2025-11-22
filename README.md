@@ -21,7 +21,7 @@ string name  = "test";
 var    value = 100;
 ```
 
-The extension also aligns class fields and member assignments:
+The extension also aligns class **fields** (not properties) with initializers:
 
 **Before:**
 ```csharp
@@ -37,7 +37,9 @@ private readonly CacheService        _cache        = cache;
 private readonly SystemRoleManager   _roleManager  = roleManager;
 ```
 
-And property assignments:
+**Note:** Property declarations are not aligned, only field declarations.
+
+And assignment statements to properties (in method bodies):
 
 **Before:**
 ```csharp

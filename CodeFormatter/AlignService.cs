@@ -242,6 +242,7 @@ namespace CodeFormatter
                 while (i < members.Count)
                 {
                     // Find consecutive field declarations with initializers
+                    // NOTE: Only fields are aligned, NOT properties
                     var group = new List<int> { i };
                     
                     if (members[i] is FieldDeclarationSyntax firstField && HasInitializer(firstField))
