@@ -538,12 +538,19 @@ namespace CodeFormatter
             {
                 var typeText = GetTypeText(field.Declaration.Type);
                 var modifiers = field.Modifiers.ToFullString();
-                var modifierLength = modifiers.TrimEnd().Length;
                 
-                // Calculate where the type ends: modifiers (trimmed) + 1 space + type length
-                // The +1 accounts for the space between modifiers and type
-                // If there are no modifiers, we still return just the type length + 1 for consistency
-                return (modifierLength > 0 ? modifierLength + 1 : 0) + typeText.Length;
+                // Calculate where the type ends in the line
+                // If there are modifiers, count them (trimmed) + 1 space + type
+                // If no modifiers (empty string), just count the type length
+                if (string.IsNullOrEmpty(modifiers.Trim()))
+                {
+                    return typeText.Length;
+                }
+                else
+                {
+                    // Modifiers + space between modifiers and type + type
+                    return modifiers.TrimEnd().Length + 1 + typeText.Length;
+                }
             }
 
             private int GetStatementTypeEndPosition(StatementSyntax statement)
