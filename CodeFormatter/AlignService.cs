@@ -317,18 +317,25 @@ namespace CodeFormatter
 
                 while (i < statements.Count)
                 {
-                    // Find consecutive assignment statements
+                    // Find consecutive assignment statements of the same type
                     var group = new List<int> { i };
                     
                     if (IsAssignmentStatement(statements[i]))
                     {
+                        // Track whether this is a local declaration or expression assignment
+                        bool isLocalDeclaration = statements[i] is LocalDeclarationStatementSyntax;
+                        
                         while (i + 1 < statements.Count)
                         {
                             int currentLine = GetLineNumber(statements[group.Last()]);
                             int nextLine = GetLineNumber(statements[i + 1]);
                             
-                            // Check if next statement is consecutive and is an assignment
-                            if (nextLine - currentLine <= 1 && IsAssignmentStatement(statements[i + 1]))
+                            // Check if next statement is consecutive, is an assignment,
+                            // and is the same type (both local decl or both expression assignment)
+                            bool nextIsLocalDecl = statements[i + 1] is LocalDeclarationStatementSyntax;
+                            if (nextLine - currentLine <= 1 && 
+                                IsAssignmentStatement(statements[i + 1]) &&
+                                nextIsLocalDecl == isLocalDeclaration)
                             {
                                 i++;
                                 group.Add(i);
@@ -493,7 +500,8 @@ namespace CodeFormatter
             {
                 var typeText = GetTypeText(field.Declaration.Type);
                 var modifiers = field.Modifiers.ToFullString();
-                // Return the length of modifiers (trimmed of trailing whitespace) + type
+                // Calculate where the type ends: modifiers (trimmed) + 1 space + type length
+                // The +1 accounts for the space between modifiers and type
                 return modifiers.TrimEnd().Length + 1 + typeText.Length;
             }
 
