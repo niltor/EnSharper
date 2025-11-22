@@ -538,9 +538,12 @@ namespace CodeFormatter
             {
                 var typeText = GetTypeText(field.Declaration.Type);
                 var modifiers = field.Modifiers.ToFullString();
+                var modifierLength = modifiers.TrimEnd().Length;
+                
                 // Calculate where the type ends: modifiers (trimmed) + 1 space + type length
                 // The +1 accounts for the space between modifiers and type
-                return modifiers.TrimEnd().Length + 1 + typeText.Length;
+                // If there are no modifiers, we still return just the type length + 1 for consistency
+                return (modifierLength > 0 ? modifierLength + 1 : 0) + typeText.Length;
             }
 
             private int GetStatementTypeEndPosition(StatementSyntax statement)
@@ -557,13 +560,17 @@ namespace CodeFormatter
             {
                 var newDeclaration = field.Declaration;
 
-                // Always set proper spacing after type (add alignment spaces + 1 for the required space)
+                // Add alignment spaces after type + 1 required space before variable name
+                // typeSpaces = extra spaces needed for alignment (0 if already aligned)
+                // +1 = the one space that must always be present between type and variable
                 var newType = field.Declaration.Type.WithTrailingTrivia(
                     SyntaxFactory.Whitespace(new string(' ', Math.Max(0, typeSpaces) + 1))
                 );
                 newDeclaration = newDeclaration.WithType(newType);
 
-                // Always set proper spacing after variable name (add alignment spaces + 1 for the required space before =)
+                // Add alignment spaces after variable name + 1 required space before = sign
+                // varSpaces = extra spaces needed for alignment (0 if already aligned)
+                // +1 = the one space that must always be present between variable and =
                 var variables = newDeclaration.Variables;
                 var newVariables = new SeparatedSyntaxList<VariableDeclaratorSyntax>();
 
@@ -571,7 +578,6 @@ namespace CodeFormatter
                 {
                     if (variable.Initializer != null)
                     {
-                        // Add spaces before the equals sign
                         var newVar = variable.WithIdentifier(
                             variable.Identifier.WithTrailingTrivia(
                                 SyntaxFactory.Whitespace(new string(' ', Math.Max(0, varSpaces) + 1))
@@ -596,13 +602,17 @@ namespace CodeFormatter
                 {
                     var newDeclaration = localDecl.Declaration;
 
-                    // Always set proper spacing after type (add alignment spaces + 1 for the required space)
+                    // Add alignment spaces after type + 1 required space before variable name
+                    // typeSpaces = extra spaces needed for alignment (0 if already aligned)
+                    // +1 = the one space that must always be present between type and variable
                     var newType = localDecl.Declaration.Type.WithTrailingTrivia(
                         SyntaxFactory.Whitespace(new string(' ', Math.Max(0, typeSpaces) + 1))
                     );
                     newDeclaration = newDeclaration.WithType(newType);
 
-                    // Always set proper spacing after variable name (add alignment spaces + 1 for the required space before =)
+                    // Add alignment spaces after variable name + 1 required space before = sign
+                    // varSpaces = extra spaces needed for alignment (0 if already aligned)
+                    // +1 = the one space that must always be present between variable and =
                     var variables = newDeclaration.Variables;
                     var newVariables = new SeparatedSyntaxList<VariableDeclaratorSyntax>();
 
@@ -630,7 +640,9 @@ namespace CodeFormatter
                 else if (statement is ExpressionStatementSyntax expr && 
                          expr.Expression is AssignmentExpressionSyntax assignment)
                 {
-                    // For simple assignments (like aesAlg.Key = ...), add spaces before equals
+                    // For simple assignments (like aesAlg.Key = ...), add alignment spaces + required space before =
+                    // varSpaces = extra spaces needed for alignment (0 if already aligned)
+                    // +1 = the one space that must always be present between variable and =
                     var newLeft = assignment.Left.WithTrailingTrivia(
                         SyntaxFactory.Whitespace(new string(' ', Math.Max(0, varSpaces) + 1))
                     );
