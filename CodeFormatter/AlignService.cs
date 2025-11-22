@@ -158,17 +158,19 @@ namespace CodeFormatter
                     return parameterList;
 
                 // Check if parameters are already formatted (each on separate line)
-                // by examining if they have newline trivia in their leading trivia
+                // by checking if they start on different lines
                 bool alreadyFormatted = true;
+                int? previousLine = null;
                 foreach (var param in parameterList.Parameters)
                 {
-                    var hasNewLine = param.GetLeadingTrivia().Any(t => 
-                        t.IsKind(SyntaxKind.EndOfLineTrivia));
-                    if (!hasNewLine)
+                    var lineSpan = param.GetLocation().GetLineSpan();
+                    int startLine = lineSpan.StartLinePosition.Line;
+                    if (previousLine != null && startLine == previousLine)
                     {
                         alreadyFormatted = false;
                         break;
                     }
+                    previousLine = startLine;
                 }
 
                 // If already formatted correctly, don't modify
@@ -412,7 +414,10 @@ namespace CodeFormatter
                 for (int i = 0; i < fields.Count; i++)
                 {
                     var field = fields[i];
-                    var firstVar = field.Declaration.Variables.First();
+                    var firstVar = field.Declaration.Variables.FirstOrDefault();
+                    if (firstVar == null)
+                        continue; // Defensive: skip fields with no variables
+                    
                     var varName = firstVar.Identifier.Text;
                     // After type alignment, all types end at maxTypePos
                     // Variable starts 1 space after that
@@ -482,18 +487,11 @@ namespace CodeFormatter
                     
                     if (statement is LocalDeclarationStatementSyntax localDecl)
                     {
-                        if (localDecl.Declaration.Variables.Count == 0)
-                        {
-                            varEndPos = 0;
-                        }
-                        else
-                        {
-                            var firstVar = localDecl.Declaration.Variables.First();
-                            var varName = firstVar.Identifier.Text;
-                            // After type alignment, all types end at maxTypePos
-                            // Variable starts 1 space after that
-                            varEndPos = maxTypePos + 1 + varName.Length;
-                        }
+                        var firstVar = localDecl.Declaration.Variables.First();
+                        var varName = firstVar.Identifier.Text;
+                        // After type alignment, all types end at maxTypePos
+                        // Variable starts 1 space after that
+                        varEndPos = maxTypePos + 1 + varName.Length;
                     }
                     else if (statement is ExpressionStatementSyntax expr && 
                              expr.Expression is AssignmentExpressionSyntax assignment)
