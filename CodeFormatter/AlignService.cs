@@ -163,8 +163,7 @@ namespace CodeFormatter
                 foreach (var param in parameterList.Parameters)
                 {
                     var hasNewLine = param.GetLeadingTrivia().Any(t => 
-                        t.IsKind(SyntaxKind.EndOfLineTrivia) || 
-                        t.IsKind(SyntaxKind.CarriageReturnLineFeed));
+                        t.IsKind(SyntaxKind.EndOfLineTrivia));
                     if (!hasNewLine)
                     {
                         alreadyFormatted = false;
@@ -463,6 +462,9 @@ namespace CodeFormatter
                     else if (statement is ExpressionStatementSyntax expr && 
                              expr.Expression is AssignmentExpressionSyntax assignment)
                     {
+                        // For expression assignments (like obj.Prop = value), there's no type
+                        // Just use the length of the left side (the variable/property being assigned to)
+                        // Note: Due to grouping logic in ProcessStatements, these won't be mixed with local declarations
                         var leftText = assignment.Left.ToString().Trim();
                         varEndPos = leftText.Length;
                     }
@@ -509,6 +511,7 @@ namespace CodeFormatter
             {
                 if (statement is LocalDeclarationStatementSyntax localDecl)
                 {
+                    // Local declarations don't have modifiers, just return type length
                     return GetTypeText(localDecl.Declaration.Type).Length;
                 }
                 return 0;
