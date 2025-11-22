@@ -15,7 +15,6 @@ namespace CodeFormatter
     {
         // VSStd2K commands
         private const uint ECMD_FORMATDOCUMENT = 84;      // Ctrl+K, Ctrl+D
-        private const uint ECMD_FORMATSELECTION = 85;     // Ctrl+K, Ctrl+F
         
         // VSStd97 commands  
         private const uint cmdidFormatDocument = 247;     // Alternative format document command
@@ -101,21 +100,15 @@ namespace CodeFormatter
             bool isFormatCommand = false;
 
             // Check for various format document commands
-            if (pguidCmdGroup == VSConstants.VSStd2K)
+            if (pguidCmdGroup == VSConstants.VSStd2K && nCmdID == ECMD_FORMATDOCUMENT)
             {
-                if (nCmdID == ECMD_FORMATDOCUMENT || nCmdID == ECMD_FORMATSELECTION)
-                {
-                    isFormatCommand = true;
-                    System.Diagnostics.Debug.WriteLine($"Format command detected: VSStd2K command {nCmdID}");
-                }
+                isFormatCommand = true;
+                System.Diagnostics.Debug.WriteLine($"Format command detected: VSStd2K command {nCmdID}");
             }
-            else if (pguidCmdGroup == VSConstants.GUID_VSStandardCommandSet97)
+            else if (pguidCmdGroup == VSConstants.GUID_VSStandardCommandSet97 && nCmdID == cmdidFormatDocument)
             {
-                if (nCmdID == cmdidFormatDocument)
-                {
-                    isFormatCommand = true;
-                    System.Diagnostics.Debug.WriteLine($"Format command detected: VSStd97 command {nCmdID}");
-                }
+                isFormatCommand = true;
+                System.Diagnostics.Debug.WriteLine($"Format command detected: VSStd97 command {nCmdID}");
             }
 
             if (isFormatCommand)

@@ -90,19 +90,42 @@ namespace CodeFormatter
                             var newSnapshot = edit.Apply();
 
                             // Restore cursor position
-                            // Note: For alignment operations that only add/remove spaces, line numbers stay stable
-                            // and column position is a good approximation. For more complex edits, a tracking
-                            // point would be more appropriate, but that's overkill for simple alignment.
+                            // Note: When sorting is enabled, we try to find the original line content
+                            // If the line moved, we restore to the new position. Otherwise, use line number.
                             try
                             {
+                                // Get the original caret line content before formatting
+                                var originalLineContent = snapshot.GetLineFromLineNumber(caretLine).GetText();
+
                                 // Get the new snapshot after edit
-                                if (newSnapshot != null && caretLine < newSnapshot.LineCount)
+                                int targetLineNumber = -1;
+                                if (newSnapshot != null)
                                 {
-                                    var newLine = newSnapshot.GetLineFromLineNumber(caretLine);
-                                    // Clamp column to line length to handle lines that got shorter
-                                    var newPosition = Math.Min(newLine.Start.Position + caretColumn, newLine.End.Position);
-                                    textView.Caret.MoveTo(new Microsoft.VisualStudio.Text.SnapshotPoint(newSnapshot, newPosition));
-                                }
+                                    // Try to find the line with the same content as the original caret line
+                                    for (int i = 0; i < newSnapshot.LineCount; i++)
+                                    {
+                                        var line = newSnapshot.GetLineFromLineNumber(i);
+                                        if (line.GetText() == originalLineContent)
+                                        {
+                                            targetLineNumber = i;
+                                            break;
+                                        }
+                                    }
+
+                                    // If found, restore caret to same column in that line
+                                    if (targetLineNumber != -1)
+                                    {
+                                        var newLine = newSnapshot.GetLineFromLineNumber(targetLineNumber);
+                                        var newPosition = Math.Min(newLine.Start.Position + caretColumn, newLine.End.Position);
+                                        textView.Caret.MoveTo(new Microsoft.VisualStudio.Text.SnapshotPoint(newSnapshot, newPosition));
+                                    }
+                                    // If not found, fall back to previous logic (by line number)
+                                    else if (caretLine < newSnapshot.LineCount)
+                                    {
+                                        var newLine = newSnapshot.GetLineFromLineNumber(caretLine);
+                                        var newPosition = Math.Min(newLine.Start.Position + caretColumn, newLine.End.Position);
+                                        textView.Caret.MoveTo(new Microsoft.VisualStudio.Text.SnapshotPoint(newSnapshot, newPosition));
+                                    }
                                 }
                             }
                             catch (Exception ex)

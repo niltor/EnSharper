@@ -274,7 +274,7 @@ namespace CodeFormatter
                         // Align the group if it has more than one member
                         if (group.Count > 1)
                         {
-                            var alignedGroup = AlignFieldGroup(members.Cast<MemberDeclarationSyntax>().ToList(), group);
+                            var alignedGroup = AlignFieldGroup(members, group);
                             newMembers.AddRange(alignedGroup);
                         }
                         else
@@ -378,6 +378,7 @@ namespace CodeFormatter
                 {
                     var sortedIndices = indices
                         .Select((idx, order) => new { Index = idx, Order = order, Field = allMembers[idx] as FieldDeclarationSyntax })
+                        .Where(x => x.Field != null)
                         .OrderBy(x => GetTypeText(x.Field.Declaration.Type).Length)
                         .ThenBy(x => x.Order)
                         .Select(x => x.Index)
