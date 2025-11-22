@@ -18,14 +18,12 @@ namespace CodeFormatter
 
         private readonly IWpfTextView textView;
         private readonly SVsServiceProvider serviceProvider;
-        private readonly AlignService alignService;
         private IOleCommandTarget nextCommandTarget;
 
         private FormatCommandFilter(IWpfTextView textView, SVsServiceProvider serviceProvider)
         {
             this.textView = textView;
             this.serviceProvider = serviceProvider;
-            this.alignService = new AlignService();
         }
 
         public static void AddFilterToView(
@@ -162,6 +160,7 @@ namespace CodeFormatter
             try
             {
                 Logger.LogDebug("FormatCommandFilter.ApplyAlignment", "Calling AlignmentHelper.ApplyAlignment");
+                var alignService = GetConfiguredAlignService();
                 AlignmentHelper.ApplyAlignment(textView, serviceProvider, alignService, checkFormatOnSave: false);
                 Logger.LogDebug("FormatCommandFilter.ApplyAlignment", "Alignment applied successfully via format command");
             }
@@ -169,6 +168,39 @@ namespace CodeFormatter
             {
                 Logger.LogError("FormatCommandFilter.ApplyAlignment", ex.ToString());
             }
+        }
+
+        private AlignService GetConfiguredAlignService()
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            
+            try
+            {
+                var shell = serviceProvider.GetService(typeof(SVsShell)) as IVsShell;
+                if (shell != null)
+                {
+                    var packageGuid = new Guid(CodeFormatterPackage.PackageGuidString);
+                    if (shell.IsPackageLoaded(ref packageGuid, out IVsPackage pkg) == VSConstants.S_OK && pkg is CodeFormatterPackage package)
+                    {
+                        var opts = package.GetDialogPage(typeof(AlignOptions)) as AlignOptions;
+                        if (opts != null)
+                        {
+                            return new AlignService(
+                                opts.MaxFileSizeBytes,
+                                opts.MaxAlignmentGap,
+                                opts.ConstructorParameterThreshold,
+                                opts.MethodParameterThreshold
+                            );
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // Fall back to default on error
+            }
+            
+            return new AlignService();
         }
     }
 }

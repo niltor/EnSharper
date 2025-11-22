@@ -122,7 +122,47 @@ namespace CodeFormatter
                         // Switch back to UI thread before calling AlignmentHelper (VSTHRD010 fix)
                         await jtf.SwitchToMainThreadAsync();
                         
-                        AlignmentHelper.ApplyAlignment(textView, serviceProvider, new AlignService(), checkFormatOnSave: false);
+                        // Create AlignService with configured options
+                        AlignService alignService;
+                        try
+                        {
+                            var shell = serviceProvider.GetService(typeof(SVsShell)) as IVsShell;
+                            if (shell != null)
+                            {
+                                var packageGuid = new Guid(CodeFormatterPackage.PackageGuidString);
+                                if (shell.IsPackageLoaded(ref packageGuid, out IVsPackage pkg) == VSConstants.S_OK && pkg is CodeFormatterPackage package)
+                                {
+                                    var opts = package.GetDialogPage(typeof(AlignOptions)) as AlignOptions;
+                                    if (opts != null)
+                                    {
+                                        alignService = new AlignService(
+                                            opts.MaxFileSizeBytes,
+                                            opts.MaxAlignmentGap,
+                                            opts.ConstructorParameterThreshold,
+                                            opts.MethodParameterThreshold
+                                        );
+                                    }
+                                    else
+                                    {
+                                        alignService = new AlignService();
+                                    }
+                                }
+                                else
+                                {
+                                    alignService = new AlignService();
+                                }
+                            }
+                            else
+                            {
+                                alignService = new AlignService();
+                            }
+                        }
+                        catch
+                        {
+                            alignService = new AlignService();
+                        }
+                        
+                        AlignmentHelper.ApplyAlignment(textView, serviceProvider, alignService, checkFormatOnSave: false);
                     }
                     catch (Exception ex)
                     {
