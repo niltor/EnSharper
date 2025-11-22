@@ -63,6 +63,9 @@ namespace CodeFormatter
                         return;
 
                     // Save cursor position before formatting
+                    // We use line number and column offset which is simple and works well for alignment changes
+                    // that preserve line structure. More complex tracking would be needed for refactorings
+                    // that move code across lines, but that's not the case for alignment.
                     var caretPosition = textView.Caret.Position.BufferPosition;
                     var caretLine = caretPosition.GetContainingLine().LineNumber;
                     var caretColumn = caretPosition.Position - caretPosition.GetContainingLine().Start.Position;
@@ -87,14 +90,19 @@ namespace CodeFormatter
                             var newSnapshot = edit.Apply();
 
                             // Restore cursor position
+                            // Note: For alignment operations that only add/remove spaces, line numbers stay stable
+                            // and column position is a good approximation. For more complex edits, a tracking
+                            // point would be more appropriate, but that's overkill for simple alignment.
                             try
                             {
                                 // Get the new snapshot after edit
                                 if (newSnapshot != null && caretLine < newSnapshot.LineCount)
                                 {
                                     var newLine = newSnapshot.GetLineFromLineNumber(caretLine);
+                                    // Clamp column to line length to handle lines that got shorter
                                     var newPosition = Math.Min(newLine.Start.Position + caretColumn, newLine.End.Position);
                                     textView.Caret.MoveTo(new Microsoft.VisualStudio.Text.SnapshotPoint(newSnapshot, newPosition));
+                                }
                                 }
                             }
                             catch (Exception ex)

@@ -389,6 +389,11 @@ namespace CodeFormatter
                 // Calculate alignment positions
                 var typePositions = fields.Select(GetTypeEndPosition).ToList();
                 var varPositions = fields.Select(GetVariableEndPosition).ToList();
+                
+                // Check if we have any positions to align (guard against empty collections)
+                if (typePositions.Count == 0 || varPositions.Count == 0)
+                    return fields.Cast<MemberDeclarationSyntax>().ToList();
+                
                 var maxTypePos = typePositions.Max();
                 var maxVarPos = varPositions.Max();
 
@@ -428,6 +433,11 @@ namespace CodeFormatter
                 // Calculate alignment positions for both type and variable
                 var typePositions = statements.Select(GetStatementTypeEndPosition).ToList();
                 var varPositions = statements.Select(GetStatementVariableEndPosition).ToList();
+                
+                // Check if we have any positions to align (guard against empty collections)
+                if (typePositions.Count == 0 || varPositions.Count == 0)
+                    return statements;
+                
                 var maxTypePos = typePositions.Max();
                 var maxVarPos = varPositions.Max();
 
