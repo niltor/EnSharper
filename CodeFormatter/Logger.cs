@@ -5,23 +5,26 @@ using Microsoft.VisualStudio.Shell;
 
 namespace CodeFormatter
 {
+    /// <summary>
+    /// Provides logging functionality for the CodeFormatter extension
+    /// </summary>
+    /// <remarks>
+    /// This logger writes to both the Visual Studio ActivityLog and a local file.
+    /// It handles thread-safety automatically, using JTF when necessary.
+    /// </remarks>
     internal static class Logger
     {
         private static readonly object sync = new object();
         private static readonly string logPath = Path.Combine(Path.GetTempPath(), "CodeFormatter.log");
 
+        /// <summary>
+        /// Logs an informational message to both ActivityLog and file
+        /// </summary>
+        /// <param name="source">The source component generating the log</param>
+        /// <param name="message">The message to log</param>
         public static void LogInfo(string source, string message)
         {
-            try
-            {
-                ThreadHelper.ThrowIfNotOnUIThread();
-                ActivityLog.LogInformation(source, message);
-            }
-            catch
-            {
-                // ignore activity log errors
-            }
-
+            // File logging doesn't require UI thread
             try
             {
                 System.Diagnostics.Debug.WriteLine($"[Info] {source}: {message}");
@@ -34,19 +37,45 @@ namespace CodeFormatter
             {
                 // swallow file IO errors
             }
+
+            // ActivityLog requires UI thread - use JTF for thread-safe access
+            if (ThreadHelper.CheckAccess())
+            {
+                try
+                {
+                    ActivityLog.LogInformation(source, message);
+                }
+                catch
+                {
+                    // ignore activity log errors
+                }
+            }
+            else
+            {
+                // If not on UI thread, schedule ActivityLog call on UI thread
+                _ = ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
+                {
+                    try
+                    {
+                        await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                        ActivityLog.LogInformation(source, message);
+                    }
+                    catch
+                    {
+                        // ignore activity log errors
+                    }
+                });
+            }
         }
 
+        /// <summary>
+        /// Logs an error message to both ActivityLog and file
+        /// </summary>
+        /// <param name="source">The source component generating the log</param>
+        /// <param name="message">The error message to log</param>
         public static void LogError(string source, string message)
         {
-            try
-            {
-                ThreadHelper.ThrowIfNotOnUIThread();
-                ActivityLog.LogError(source, message);
-            }
-            catch
-            {
-            }
-
+            // File logging doesn't require UI thread
             try
             {
                 System.Diagnostics.Debug.WriteLine($"[Error] {source}: {message}");
@@ -57,9 +86,44 @@ namespace CodeFormatter
             }
             catch
             {
+                // swallow file IO errors
+            }
+
+            // ActivityLog requires UI thread - use JTF for thread-safe access
+            if (ThreadHelper.CheckAccess())
+            {
+                try
+                {
+                    ActivityLog.LogError(source, message);
+                }
+                catch
+                {
+                    // ignore activity log errors
+                }
+            }
+            else
+            {
+                // If not on UI thread, schedule ActivityLog call on UI thread
+                _ = ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
+                {
+                    try
+                    {
+                        await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                        ActivityLog.LogError(source, message);
+                    }
+                    catch
+                    {
+                        // ignore activity log errors
+                    }
+                });
             }
         }
 
+        /// <summary>
+        /// Logs a debug message to Debug output and file
+        /// </summary>
+        /// <param name="source">The source component generating the log</param>
+        /// <param name="message">The debug message to log</param>
         public static void LogDebug(string source, string message)
         {
             try
@@ -75,6 +139,9 @@ namespace CodeFormatter
             }
         }
 
+        /// <summary>
+        /// Gets the path to the log file
+        /// </summary>
         public static string LogFilePath => logPath;
     }
 }

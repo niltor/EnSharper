@@ -22,5 +22,25 @@ namespace CodeFormatter
         [DisplayName("Format Command Delay (ms)")]
         [Description("Delay in milliseconds to wait after a format command before applying alignment. Increase if other formatters run asynchronously.")]
         public int FormatCommandDelayMs { get; set; } = 100;
+
+        [Category("Alignment")]
+        [DisplayName("Maximum Alignment Gap")]
+        [Description("Maximum number of spaces to add for alignment (prevents excessive spacing). Set to 0 for unlimited.")]
+        public int MaxAlignmentGap { get; set; } = 50;
+
+        [Category("Alignment")]
+        [DisplayName("Constructor Parameter Threshold")]
+        [Description("Minimum number of constructor parameters to trigger alignment (default: 3)")]
+        public int ConstructorParameterThreshold { get; set; } = 3;
+
+        [Category("Alignment")]
+        [DisplayName("Method Parameter Threshold")]
+        [Description("Minimum number of method parameters to trigger alignment (default: 4)")]
+        public int MethodParameterThreshold { get; set; } = 4;
+
+        [Category("Performance")]
+        [DisplayName("Maximum File Size (bytes)")]
+        [Description("Maximum file size in bytes to process for alignment. Files larger than this will be skipped.")]
+        public int MaxFileSizeBytes { get; set; } = 1024 * 1024; // 1MB
     }
 }
