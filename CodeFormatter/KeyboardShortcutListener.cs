@@ -123,44 +123,7 @@ namespace CodeFormatter
                         await jtf.SwitchToMainThreadAsync();
                         
                         // Create AlignService with configured options
-                        AlignService alignService;
-                        try
-                        {
-                            var shell = serviceProvider.GetService(typeof(SVsShell)) as IVsShell;
-                            if (shell != null)
-                            {
-                                var packageGuid = new Guid(CodeFormatterPackage.PackageGuidString);
-                                if (shell.IsPackageLoaded(ref packageGuid, out IVsPackage pkg) == VSConstants.S_OK && pkg is CodeFormatterPackage package)
-                                {
-                                    var opts = package.GetDialogPage(typeof(AlignOptions)) as AlignOptions;
-                                    if (opts != null)
-                                    {
-                                        alignService = new AlignService(
-                                            opts.MaxFileSizeBytes,
-                                            opts.MaxAlignmentGap,
-                                            opts.ConstructorParameterThreshold,
-                                            opts.MethodParameterThreshold
-                                        );
-                                    }
-                                    else
-                                    {
-                                        alignService = new AlignService();
-                                    }
-                                }
-                                else
-                                {
-                                    alignService = new AlignService();
-                                }
-                            }
-                            else
-                            {
-                                alignService = new AlignService();
-                            }
-                        }
-                        catch
-                        {
-                            alignService = new AlignService();
-                        }
+                        var alignService = AlignServiceFactory.CreateFromOptions(serviceProvider);
                         
                         AlignmentHelper.ApplyAlignment(textView, serviceProvider, alignService, checkFormatOnSave: false);
                     }

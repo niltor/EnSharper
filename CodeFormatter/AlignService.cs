@@ -33,13 +33,13 @@ namespace CodeFormatter
         /// Initializes a new instance of AlignService with custom settings
         /// </summary>
         /// <param name="maxFileSizeBytes">Maximum file size to process</param>
-        /// <param name="maxAlignmentGap">Maximum alignment gap in spaces</param>
+        /// <param name="maxAlignmentGap">Maximum alignment gap in spaces (0 for unlimited)</param>
         /// <param name="constructorParameterThreshold">Constructor parameter threshold</param>
         /// <param name="methodParameterThreshold">Method parameter threshold</param>
         public AlignService(int maxFileSizeBytes, int maxAlignmentGap, int constructorParameterThreshold, int methodParameterThreshold)
         {
             this.maxFileSizeBytes = maxFileSizeBytes > 0 ? maxFileSizeBytes : DefaultMaxFileSizeBytes;
-            this.maxAlignmentGap = maxAlignmentGap;
+            this.maxAlignmentGap = maxAlignmentGap >= 0 ? maxAlignmentGap : 0; // 0 means unlimited
             this.constructorParameterThreshold = Math.Max(2, constructorParameterThreshold);
             this.methodParameterThreshold = Math.Max(2, methodParameterThreshold);
         }
