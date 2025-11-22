@@ -36,6 +36,13 @@ namespace CodeFormatter
                 () => saveListener
             );
 
+            // Hook up keyboard shortcut listener
+            var kbListener = new KeyboardShortcutListener(textView, ServiceProvider);
+            textView.Properties.GetOrCreateSingletonProperty(
+                typeof(KeyboardShortcutListener),
+                () => kbListener
+            );
+
             // Clean up when the text view is closed
             textView.Closed += (sender, args) =>
             {
@@ -47,6 +54,12 @@ namespace CodeFormatter
                 {
                     listener.Dispose();
                     textView.Properties.RemoveProperty(typeof(DocumentSaveListener));
+                }
+
+                if (textView.Properties.TryGetProperty(typeof(KeyboardShortcutListener), out KeyboardShortcutListener kb))
+                {
+                    kb.Dispose();
+                    textView.Properties.RemoveProperty(typeof(KeyboardShortcutListener));
                 }
             };
         }

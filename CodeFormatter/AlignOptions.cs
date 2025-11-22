@@ -17,5 +17,10 @@ namespace CodeFormatter
         [DisplayName("Format On Save")]
         [Description("Automatically apply alignment formatting when saving files")]
         public bool FormatOnSave { get; set; } = true;
+
+        [Category("General")]
+        [DisplayName("Format Command Delay (ms)")]
+        [Description("Delay in milliseconds to wait after a format command before applying alignment. Increase if other formatters run asynchronously.")]
+        public int FormatCommandDelayMs { get; set; } = 100;
     }
 }
