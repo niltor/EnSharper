@@ -385,15 +385,29 @@ namespace CodeFormatter
             {
                 var fields = indices.Select(idx => allMembers[idx] as FieldDeclarationSyntax).ToList();
 
-                // Calculate alignment positions
+                // Calculate alignment positions for types
                 var typePositions = fields.Select(GetTypeEndPosition).ToList();
-                var varPositions = fields.Select(GetVariableEndPosition).ToList();
                 
                 // Check if we have any positions to align (guard against empty collections)
-                if (typePositions.Count == 0 || varPositions.Count == 0)
+                if (typePositions.Count == 0)
                     return new List<MemberDeclarationSyntax>(fields);
                 
                 var maxTypePos = typePositions.Max();
+
+                // Calculate variable positions AFTER type alignment
+                // Each variable position needs to account for the aligned type position
+                var varPositions = new List<int>();
+                for (int i = 0; i < fields.Count; i++)
+                {
+                    var field = fields[i];
+                    var firstVar = field.Declaration.Variables.First();
+                    var varName = firstVar.Identifier.Text;
+                    // After type alignment, all types end at maxTypePos
+                    // Variable starts 1 space after that
+                    var varEndPos = maxTypePos + 1 + varName.Length;
+                    varPositions.Add(varEndPos);
+                }
+                
                 var maxVarPos = varPositions.Max();
 
                 var result = new List<MemberDeclarationSyntax>();
@@ -415,15 +429,44 @@ namespace CodeFormatter
             {
                 var statements = indices.Select(idx => allStatements[idx]).ToList();
 
-                // Calculate alignment positions for both type and variable
+                // Calculate alignment positions for types
                 var typePositions = statements.Select(GetStatementTypeEndPosition).ToList();
-                var varPositions = statements.Select(GetStatementVariableEndPosition).ToList();
                 
                 // Check if we have any positions to align (guard against empty collections)
-                if (typePositions.Count == 0 || varPositions.Count == 0)
+                if (typePositions.Count == 0)
                     return statements;
                 
                 var maxTypePos = typePositions.Max();
+
+                // Calculate variable positions AFTER type alignment
+                var varPositions = new List<int>();
+                for (int i = 0; i < statements.Count; i++)
+                {
+                    var statement = statements[i];
+                    int varEndPos;
+                    
+                    if (statement is LocalDeclarationStatementSyntax localDecl)
+                    {
+                        var firstVar = localDecl.Declaration.Variables.First();
+                        var varName = firstVar.Identifier.Text;
+                        // After type alignment, all types end at maxTypePos
+                        // Variable starts 1 space after that
+                        varEndPos = maxTypePos + 1 + varName.Length;
+                    }
+                    else if (statement is ExpressionStatementSyntax expr && 
+                             expr.Expression is AssignmentExpressionSyntax assignment)
+                    {
+                        var leftText = assignment.Left.ToString().Trim();
+                        varEndPos = leftText.Length;
+                    }
+                    else
+                    {
+                        varEndPos = 0;
+                    }
+                    
+                    varPositions.Add(varEndPos);
+                }
+                
                 var maxVarPos = varPositions.Max();
 
                 var result = new List<StatementSyntax>();
@@ -454,43 +497,12 @@ namespace CodeFormatter
                 return modifiers.TrimEnd().Length + 1 + typeText.Length;
             }
 
-            private int GetVariableEndPosition(FieldDeclarationSyntax field)
-            {
-                var typeText = GetTypeText(field.Declaration.Type);
-                var modifiers = field.Modifiers.ToFullString();
-                var firstVar = field.Declaration.Variables.First();
-                var varName = firstVar.Identifier.Text;
-                
-                // Calculate: modifiers + space + type + space + variable name
-                return modifiers.TrimEnd().Length + 1 + typeText.Length + 1 + varName.Length;
-            }
-
             private int GetStatementTypeEndPosition(StatementSyntax statement)
             {
                 if (statement is LocalDeclarationStatementSyntax localDecl)
                 {
                     return GetTypeText(localDecl.Declaration.Type).Length;
                 }
-                return 0;
-            }
-
-            private int GetStatementVariableEndPosition(StatementSyntax statement)
-            {
-                if (statement is LocalDeclarationStatementSyntax localDecl)
-                {
-                    var typeLen = GetTypeText(localDecl.Declaration.Type).Length;
-                    var firstVar = localDecl.Declaration.Variables.First();
-                    var varName = firstVar.Identifier.Text;
-                    // Calculate: type + space + variable name
-                    return typeLen + 1 + varName.Length;
-                }
-                
-                if (statement is ExpressionStatementSyntax expr && expr.Expression is AssignmentExpressionSyntax assignment)
-                {
-                    var leftText = assignment.Left.ToString().Trim();
-                    return leftText.Length;
-                }
-
                 return 0;
             }
 

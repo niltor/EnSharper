@@ -127,9 +127,7 @@ The extension can be configured through Visual Studio's Options dialog:
 2. Navigate to **Code Align** > **General**
 3. Configure the following settings:
    - **Enable Plugin**: Controls whether the extension is active (default: `true`)
-   - **Enable Align**: Controls whether the alignment features are enabled (default: `true`)
    - **Format On Save**: Automatically apply alignment formatting when saving files (default: `true`)
-   - **Sort By Type Length**: Sort aligned declarations by type name length, shortest first (default: `true`)
 
 ## Usage
 
