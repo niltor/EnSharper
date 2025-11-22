@@ -13,17 +13,13 @@ namespace CodeFormatter
     /// </summary>
     public class AlignService
     {
-        private bool sortByTypeLength = true;
-
         /// <summary>
         /// Formats the given code with alignment
         /// </summary>
-        public string FormatCode(string code, bool sortByTypeLength = true)
+        public string FormatCode(string code)
         {
             if (string.IsNullOrEmpty(code))
                 return code;
-
-            this.sortByTypeLength = sortByTypeLength;
 
             try
             {
@@ -64,7 +60,7 @@ namespace CodeFormatter
         /// </summary>
         private SyntaxNode AlignAssignments(SyntaxNode root)
         {
-            var rewriter = new AssignmentAlignmentRewriter(sortByTypeLength);
+            var rewriter = new AssignmentAlignmentRewriter();
             return rewriter.Visit(root);
         }
 
@@ -161,6 +157,25 @@ namespace CodeFormatter
                 if (parameterList.Parameters.Count == 0)
                     return parameterList;
 
+                // Check if parameters are already formatted (each on separate line)
+                // by examining if they have newline trivia in their leading trivia
+                bool alreadyFormatted = true;
+                foreach (var param in parameterList.Parameters)
+                {
+                    var hasNewLine = param.GetLeadingTrivia().Any(t => 
+                        t.IsKind(SyntaxKind.EndOfLineTrivia) || 
+                        t.IsKind(SyntaxKind.CarriageReturnLineFeed));
+                    if (!hasNewLine)
+                    {
+                        alreadyFormatted = false;
+                        break;
+                    }
+                }
+
+                // If already formatted correctly, don't modify
+                if (alreadyFormatted)
+                    return parameterList;
+
                 var newParameters = SyntaxFactory.SeparatedList<ParameterSyntax>();
                 
                 for (int i = 0; i < parameterList.Parameters.Count; i++)
@@ -202,11 +217,8 @@ namespace CodeFormatter
         /// </summary>
         private class AssignmentAlignmentRewriter : CSharpSyntaxRewriter
         {
-            private readonly bool sortByTypeLength;
-
-            public AssignmentAlignmentRewriter(bool sortByTypeLength)
+            public AssignmentAlignmentRewriter()
             {
-                this.sortByTypeLength = sortByTypeLength;
             }
 
             // Handle local variables in blocks
@@ -372,21 +384,6 @@ namespace CodeFormatter
             private List<MemberDeclarationSyntax> AlignFieldGroup(List<MemberDeclarationSyntax> allMembers, List<int> indices)
             {
                 var fields = indices.Select(idx => allMembers[idx] as FieldDeclarationSyntax).ToList();
-                
-                // Sort if enabled
-                if (sortByTypeLength)
-                {
-                    var sortedIndices = indices
-                        .Select((idx, order) => new { Index = idx, Order = order, Field = allMembers[idx] as FieldDeclarationSyntax })
-                        .Where(x => x.Field != null)
-                        .OrderBy(x => GetTypeText(x.Field.Declaration.Type).Length)
-                        .ThenBy(x => x.Order)
-                        .Select(x => x.Index)
-                        .ToList();
-                    
-                    indices = sortedIndices;
-                    fields = indices.Select(idx => allMembers[idx] as FieldDeclarationSyntax).Where(f => f != null).ToList();
-                }
 
                 // Calculate alignment positions
                 var typePositions = fields.Select(GetTypeEndPosition).ToList();
@@ -417,20 +414,6 @@ namespace CodeFormatter
             private List<StatementSyntax> AlignStatementGroup(List<StatementSyntax> allStatements, List<int> indices)
             {
                 var statements = indices.Select(idx => allStatements[idx]).ToList();
-                
-                // Sort if enabled
-                if (sortByTypeLength)
-                {
-                    var sortedIndices = indices
-                        .Select((idx, order) => new { Index = idx, Order = order, Statement = allStatements[idx] })
-                        .OrderBy(x => GetStatementTypeLength(x.Statement))
-                        .ThenBy(x => x.Order)
-                        .Select(x => x.Index)
-                        .ToList();
-                    
-                    indices = sortedIndices;
-                    statements = indices.Select(idx => allStatements[idx]).ToList();
-                }
 
                 // Calculate alignment positions for both type and variable
                 var typePositions = statements.Select(GetStatementTypeEndPosition).ToList();
@@ -456,15 +439,6 @@ namespace CodeFormatter
                 }
 
                 return result;
-            }
-
-            private int GetStatementTypeLength(StatementSyntax statement)
-            {
-                if (statement is LocalDeclarationStatementSyntax localDecl)
-                {
-                    return GetTypeText(localDecl.Declaration.Type).Length;
-                }
-                return 0;
             }
 
             private string GetTypeText(TypeSyntax type)
