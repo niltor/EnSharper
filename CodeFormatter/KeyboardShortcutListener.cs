@@ -97,7 +97,8 @@ namespace CodeFormatter
                     if (shell != null)
                     {
                         var packageGuid = new Guid(CodeFormatterPackage.PackageGuidString);
-                        if (shell.IsPackageLoaded(ref packageGuid, out IVsPackage pkg) == VSConstants.S_OK && pkg is CodeFormatterPackage package)
+                        IVsPackage pkg;
+                        if (shell.IsPackageLoaded(ref packageGuid, out pkg) == VSConstants.S_OK && pkg is CodeFormatterPackage package)
                         {
                             var opts = package.GetDialogPage(typeof(AlignOptions)) as AlignOptions;
                             if (opts != null)

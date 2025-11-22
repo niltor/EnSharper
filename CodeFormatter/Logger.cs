@@ -53,18 +53,27 @@ namespace CodeFormatter
             else
             {
                 // If not on UI thread, schedule ActivityLog call on UI thread
-                _ = ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
+                // Using fire-and-forget pattern - exceptions are caught inside the async lambda
+                try
                 {
-                    try
+                    _ = ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
                     {
-                        await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-                        ActivityLog.LogInformation(source, message);
-                    }
-                    catch
-                    {
-                        // ignore activity log errors
-                    }
-                });
+                        try
+                        {
+                            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                            ActivityLog.LogInformation(source, message);
+                        }
+                        catch
+                        {
+                            // ignore activity log errors
+                        }
+                    });
+                }
+                catch
+                {
+                    // If even starting the async operation fails, log to debug only
+                    System.Diagnostics.Debug.WriteLine($"Failed to queue ActivityLog.LogInformation for: {source}");
+                }
             }
         }
 
@@ -104,18 +113,27 @@ namespace CodeFormatter
             else
             {
                 // If not on UI thread, schedule ActivityLog call on UI thread
-                _ = ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
+                // Using fire-and-forget pattern - exceptions are caught inside the async lambda
+                try
                 {
-                    try
+                    _ = ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
                     {
-                        await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-                        ActivityLog.LogError(source, message);
-                    }
-                    catch
-                    {
-                        // ignore activity log errors
-                    }
-                });
+                        try
+                        {
+                            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                            ActivityLog.LogError(source, message);
+                        }
+                        catch
+                        {
+                            // ignore activity log errors
+                        }
+                    });
+                }
+                catch
+                {
+                    // If even starting the async operation fails, log to debug only
+                    System.Diagnostics.Debug.WriteLine($"Failed to queue ActivityLog.LogError for: {source}");
+                }
             }
         }
 
