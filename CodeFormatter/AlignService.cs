@@ -394,7 +394,7 @@ namespace CodeFormatter
                 
                 // Check if we have any positions to align (guard against empty collections)
                 if (typePositions.Count == 0 || varPositions.Count == 0)
-                    return fields.Cast<MemberDeclarationSyntax>().ToList();
+                    return fields.ToList<MemberDeclarationSyntax>();
                 
                 var maxTypePos = typePositions.Max();
                 var maxVarPos = varPositions.Max();

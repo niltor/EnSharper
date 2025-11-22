@@ -11,6 +11,9 @@ namespace CodeFormatter
     /// </summary>
     internal static class AlignmentHelper
     {
+        // Search range for finding cursor line after formatting (lines above and below)
+        private const int CursorSearchRange = 10;
+
         /// <summary>
         /// Applies alignment formatting to the text view if enabled
         /// </summary>
@@ -103,8 +106,8 @@ namespace CodeFormatter
                                 {
                                     // Optimize search: check original position first, then search nearby lines
                                     // Most formatting operations don't move lines far
-                                    int searchStart = Math.Max(0, caretLine - 10);
-                                    int searchEnd = Math.Min(newSnapshot.LineCount, caretLine + 10);
+                                    int searchStart = Math.Max(0, caretLine - CursorSearchRange);
+                                    int searchEnd = Math.Min(newSnapshot.LineCount, caretLine + CursorSearchRange);
                                     
                                     // First check the original line number if it exists
                                     if (caretLine < newSnapshot.LineCount)

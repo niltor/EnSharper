@@ -13,11 +13,11 @@ namespace CodeFormatter
     /// </summary>
     internal sealed class FormatCommandFilter : IOleCommandTarget
     {
-        // VSStd2K commands
+        // VSStd2K commands - only handling Format Document, not Format Selection
         private const uint ECMD_FORMATDOCUMENT = 84;      // Ctrl+K, Ctrl+D
         
         // VSStd97 commands  
-        private const uint cmdidFormatDocument = 247;     // Alternative format document command
+        private const uint cmdidFormatDocument = 247;     // Alternative format document command (Ctrl+Shift+F)
 
         private readonly IWpfTextView textView;
         private readonly SVsServiceProvider serviceProvider;
