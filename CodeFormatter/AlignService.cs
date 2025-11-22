@@ -450,20 +450,19 @@ namespace CodeFormatter
             {
                 var typeText = GetTypeText(field.Declaration.Type);
                 var modifiers = field.Modifiers.ToFullString();
-                return modifiers.TrimEnd().Length + typeText.Length;
+                // Return the length of modifiers (trimmed of trailing whitespace) + type
+                return modifiers.TrimEnd().Length + 1 + typeText.Length;
             }
 
             private int GetVariableEndPosition(FieldDeclarationSyntax field)
             {
+                var typeText = GetTypeText(field.Declaration.Type);
+                var modifiers = field.Modifiers.ToFullString();
                 var firstVar = field.Declaration.Variables.First();
-                var text = field.ToFullString();
                 var varName = firstVar.Identifier.Text;
-                var varIndex = text.IndexOf(varName);
-                if (varIndex >= 0)
-                {
-                    return varIndex + varName.Length;
-                }
-                return GetTypeEndPosition(field) + varName.Length + 1;
+                
+                // Calculate: modifiers + space + type + space + variable name
+                return modifiers.TrimEnd().Length + 1 + typeText.Length + 1 + varName.Length;
             }
 
             private int GetStatementTypeEndPosition(StatementSyntax statement)
@@ -482,7 +481,8 @@ namespace CodeFormatter
                     var typeLen = GetTypeText(localDecl.Declaration.Type).Length;
                     var firstVar = localDecl.Declaration.Variables.First();
                     var varName = firstVar.Identifier.Text;
-                    return typeLen + varName.Length + 1; // +1 for space
+                    // Calculate: type + space + variable name
+                    return typeLen + 1 + varName.Length;
                 }
                 
                 if (statement is ExpressionStatementSyntax expr && expr.Expression is AssignmentExpressionSyntax assignment)
@@ -496,23 +496,54 @@ namespace CodeFormatter
 
             private FieldDeclarationSyntax AlignFieldDeclaration(FieldDeclarationSyntax field, int typeSpaces, int varSpaces)
             {
-                if (typeSpaces <= 0 && varSpaces <= 0)
-                    return field;
-
                 var newDeclaration = field.Declaration;
 
-                // Add spaces after type if needed
-                if (typeSpaces > 0)
+                // Always set proper spacing after type (add alignment spaces + 1 for the required space)
+                var newType = field.Declaration.Type.WithTrailingTrivia(
+                    SyntaxFactory.Whitespace(new string(' ', Math.Max(0, typeSpaces) + 1))
+                );
+                newDeclaration = newDeclaration.WithType(newType);
+
+                // Always set proper spacing after variable name (add alignment spaces + 1 for the required space before =)
+                var variables = newDeclaration.Variables;
+                var newVariables = new SeparatedSyntaxList<VariableDeclaratorSyntax>();
+
+                foreach (var variable in variables)
                 {
-                    var newType = field.Declaration.Type.WithTrailingTrivia(
-                        SyntaxFactory.Whitespace(new string(' ', typeSpaces) + " ")
-                    );
-                    newDeclaration = newDeclaration.WithType(newType);
+                    if (variable.Initializer != null)
+                    {
+                        // Add spaces before the equals sign
+                        var newVar = variable.WithIdentifier(
+                            variable.Identifier.WithTrailingTrivia(
+                                SyntaxFactory.Whitespace(new string(' ', Math.Max(0, varSpaces) + 1))
+                            )
+                        );
+                        newVariables = newVariables.Add(newVar);
+                    }
+                    else
+                    {
+                        newVariables = newVariables.Add(variable);
+                    }
                 }
 
-                // Add spaces after variable name if needed
-                if (varSpaces > 0)
+                newDeclaration = newDeclaration.WithVariables(newVariables);
+
+                return field.WithDeclaration(newDeclaration);
+            }
+
+            private StatementSyntax AlignStatement(StatementSyntax statement, int typeSpaces, int varSpaces)
+            {
+                if (statement is LocalDeclarationStatementSyntax localDecl)
                 {
+                    var newDeclaration = localDecl.Declaration;
+
+                    // Always set proper spacing after type (add alignment spaces + 1 for the required space)
+                    var newType = localDecl.Declaration.Type.WithTrailingTrivia(
+                        SyntaxFactory.Whitespace(new string(' ', Math.Max(0, typeSpaces) + 1))
+                    );
+                    newDeclaration = newDeclaration.WithType(newType);
+
+                    // Always set proper spacing after variable name (add alignment spaces + 1 for the required space before =)
                     var variables = newDeclaration.Variables;
                     var newVariables = new SeparatedSyntaxList<VariableDeclaratorSyntax>();
 
@@ -522,7 +553,7 @@ namespace CodeFormatter
                         {
                             var newVar = variable.WithIdentifier(
                                 variable.Identifier.WithTrailingTrivia(
-                                    SyntaxFactory.Whitespace(new string(' ', varSpaces))
+                                    SyntaxFactory.Whitespace(new string(' ', Math.Max(0, varSpaces) + 1))
                                 )
                             );
                             newVariables = newVariables.Add(newVar);
@@ -534,54 +565,6 @@ namespace CodeFormatter
                     }
 
                     newDeclaration = newDeclaration.WithVariables(newVariables);
-                }
-
-                return field.WithDeclaration(newDeclaration);
-            }
-
-            private StatementSyntax AlignStatement(StatementSyntax statement, int typeSpaces, int varSpaces)
-            {
-                if (typeSpaces <= 0 && varSpaces <= 0)
-                    return statement;
-
-                if (statement is LocalDeclarationStatementSyntax localDecl)
-                {
-                    var newDeclaration = localDecl.Declaration;
-
-                    // Add spaces after type if needed
-                    if (typeSpaces > 0)
-                    {
-                        var newType = localDecl.Declaration.Type.WithTrailingTrivia(
-                            SyntaxFactory.Whitespace(new string(' ', typeSpaces) + " ")
-                        );
-                        newDeclaration = newDeclaration.WithType(newType);
-                    }
-
-                    // Add spaces after variable name if needed
-                    if (varSpaces > 0)
-                    {
-                        var variables = newDeclaration.Variables;
-                        var newVariables = new SeparatedSyntaxList<VariableDeclaratorSyntax>();
-
-                        foreach (var variable in variables)
-                        {
-                            if (variable.Initializer != null)
-                            {
-                                var newVar = variable.WithIdentifier(
-                                    variable.Identifier.WithTrailingTrivia(
-                                        SyntaxFactory.Whitespace(new string(' ', varSpaces))
-                                    )
-                                );
-                                newVariables = newVariables.Add(newVar);
-                            }
-                            else
-                            {
-                                newVariables = newVariables.Add(variable);
-                            }
-                        }
-
-                        newDeclaration = newDeclaration.WithVariables(newVariables);
-                    }
 
                     return localDecl.WithDeclaration(newDeclaration);
                 }
@@ -589,14 +572,11 @@ namespace CodeFormatter
                          expr.Expression is AssignmentExpressionSyntax assignment)
                 {
                     // For simple assignments (like aesAlg.Key = ...), add spaces before equals
-                    if (varSpaces > 0)
-                    {
-                        var newLeft = assignment.Left.WithTrailingTrivia(
-                            SyntaxFactory.Whitespace(new string(' ', varSpaces))
-                        );
-                        var newAssignment = assignment.WithLeft(newLeft);
-                        return expr.WithExpression(newAssignment);
-                    }
+                    var newLeft = assignment.Left.WithTrailingTrivia(
+                        SyntaxFactory.Whitespace(new string(' ', Math.Max(0, varSpaces) + 1))
+                    );
+                    var newAssignment = assignment.WithLeft(newLeft);
+                    return expr.WithExpression(newAssignment);
                 }
 
                 return statement;
