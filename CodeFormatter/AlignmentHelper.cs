@@ -57,8 +57,8 @@ namespace CodeFormatter
                 {
                     var options = formatterPackage.GetDialogPage(typeof(AlignOptions)) as AlignOptions;
 
-                    // Check if alignment is enabled
-                    if (options == null || !options.EnablePlugin || !options.EnableAlign)
+                    // Check if plugin is enabled
+                    if (options == null || !options.EnablePlugin)
                         return;
 
                     // For save events, also check if FormatOnSave is enabled
@@ -77,8 +77,8 @@ namespace CodeFormatter
                     var snapshot = textView.TextBuffer.CurrentSnapshot;
                     var text = snapshot.GetText();
 
-                    // Format the code with sort option
-                    var formattedText = alignService.FormatCode(text, options.SortByTypeLength);
+                    // Format the code (sorting removed)
+                    var formattedText = alignService.FormatCode(text);
 
                     // Only apply changes if text actually changed
                     if (formattedText != text)
