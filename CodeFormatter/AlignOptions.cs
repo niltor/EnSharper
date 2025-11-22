@@ -22,5 +22,10 @@ namespace CodeFormatter
         [DisplayName("Format On Save")]
         [Description("Automatically apply alignment formatting when saving files")]
         public bool FormatOnSave { get; set; } = true;
+
+        [Category("General")]
+        [DisplayName("Sort By Type Length")]
+        [Description("Sort aligned declarations by type name length (shortest first)")]
+        public bool SortByTypeLength { get; set; } = true;
     }
 }

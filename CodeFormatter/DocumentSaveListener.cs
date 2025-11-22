@@ -18,6 +18,8 @@ namespace CodeFormatter
         private readonly AlignService alignService;
         private uint rdtCookie;
         private IVsRunningDocumentTable rdt;
+        private bool isFormatting = false;
+        private string lastFormattedText = null;
 
         private DocumentSaveListener(IWpfTextView textView, SVsServiceProvider serviceProvider)
         {
@@ -97,8 +99,17 @@ namespace CodeFormatter
         {
             ThreadHelper.ThrowIfNotOnUIThread();
 
+            // Prevent re-entrant formatting
+            if (isFormatting)
+            {
+                System.Diagnostics.Debug.WriteLine("DocumentSaveListener: Skipping format - already formatting");
+                return VSConstants.S_OK;
+            }
+
             try
             {
+                isFormatting = true;
+
                 // Get the document info
                 uint grfRDTFlags;
                 uint dwReadLocks;
@@ -140,8 +151,21 @@ namespace CodeFormatter
                         if (textDocument.FilePath != pbstrMkDocument)
                             return VSConstants.S_OK;
 
+                        // Check if we already formatted this exact text to prevent duplicate formatting
+                        var currentText = textBuffer.CurrentSnapshot.GetText();
+                        if (lastFormattedText == currentText)
+                        {
+                            System.Diagnostics.Debug.WriteLine("DocumentSaveListener: Skipping format - text unchanged since last format");
+                            return VSConstants.S_OK;
+                        }
+
                         // Apply alignment if enabled
                         AlignmentHelper.ApplyAlignment(textView, serviceProvider, alignService, checkFormatOnSave: true);
+                        
+                        // Remember the formatted text
+                        lastFormattedText = textBuffer.CurrentSnapshot.GetText();
+                        
+                        System.Diagnostics.Debug.WriteLine("DocumentSaveListener: Format applied on save");
                     }
                 }
                 finally
@@ -158,6 +182,10 @@ namespace CodeFormatter
                 // Log error but don't prevent save
                 ActivityLog.LogError("CodeFormatter.DocumentSaveListener", $"Error in OnBeforeSave: {ex}");
                 System.Diagnostics.Debug.WriteLine($"Error in OnBeforeSave: {ex}");
+            }
+            finally
+            {
+                isFormatting = false;
             }
 
             return VSConstants.S_OK;

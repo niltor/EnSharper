@@ -62,22 +62,46 @@ namespace CodeFormatter
                     if (checkFormatOnSave && !options.FormatOnSave)
                         return;
 
+                    // Save cursor position before formatting
+                    var caretPosition = textView.Caret.Position.BufferPosition;
+                    var caretLine = caretPosition.GetContainingLine().LineNumber;
+                    var caretColumn = caretPosition.Position - caretPosition.GetContainingLine().Start.Position;
+
                     // Get the current snapshot and text
                     var snapshot = textView.TextBuffer.CurrentSnapshot;
                     var text = snapshot.GetText();
 
-                    // Format the code
-                    var formattedText = alignService.FormatCode(text);
+                    // Format the code with sort option
+                    var formattedText = alignService.FormatCode(text, options.SortByTypeLength);
 
+                    // Only apply changes if text actually changed
                     if (formattedText != text)
                     {
                         // Apply the changes using the same snapshot we read from
                         var edit = textView.TextBuffer.CreateEdit();
+                        
                         // Verify snapshot hasn't changed
                         if (edit.Snapshot == snapshot)
                         {
                             edit.Replace(0, snapshot.Length, formattedText);
-                            edit.Apply();
+                            var newSnapshot = edit.Apply();
+
+                            // Restore cursor position
+                            try
+                            {
+                                // Get the new snapshot after edit
+                                if (newSnapshot != null && caretLine < newSnapshot.LineCount)
+                                {
+                                    var newLine = newSnapshot.GetLineFromLineNumber(caretLine);
+                                    var newPosition = Math.Min(newLine.Start.Position + caretColumn, newLine.End.Position);
+                                    textView.Caret.MoveTo(new Microsoft.VisualStudio.Text.SnapshotPoint(newSnapshot, newPosition));
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                // If cursor restoration fails, log but don't crash
+                                System.Diagnostics.Debug.WriteLine($"Failed to restore cursor position: {ex.Message}");
+                            }
                         }
                         else
                         {

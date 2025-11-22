@@ -5,7 +5,7 @@ A Visual Studio extension that provides code formatting functionality with align
 ## Features
 
 ### Variable Assignment Alignment
-When enabled, the extension aligns the `=` signs in consecutive variable declarations and assignments vertically.
+When enabled, the extension aligns both the variable types and names, then the `=` signs in consecutive variable declarations and assignments vertically.
 
 **Before:**
 ```csharp
@@ -16,12 +16,63 @@ var value = 100;
 
 **After:**
 ```csharp
-int x      = 5;
-string name = "test";
-var value  = 100;
+int    x     = 5;
+string name  = "test";
+var    value = 100;
+```
+
+The extension also aligns class fields and member assignments:
+
+**Before:**
+```csharp
+private readonly SystemConfigManager _systemConfig = systemConfig;
+private readonly CacheService _cache = cache;
+private readonly SystemRoleManager _roleManager = roleManager;
+```
+
+**After:**
+```csharp
+private readonly SystemConfigManager _systemConfig = systemConfig;
+private readonly CacheService        _cache        = cache;
+private readonly SystemRoleManager   _roleManager  = roleManager;
+```
+
+And property assignments:
+
+**Before:**
+```csharp
+aesAlg.Key = Encoding.UTF8.GetBytes(Md5Hash(key));
+aesAlg.IV = aesAlg.Key[..16];
+```
+
+**After:**
+```csharp
+aesAlg.Key = Encoding.UTF8.GetBytes(Md5Hash(key));
+aesAlg.IV  = aesAlg.Key[..16];
 ```
 
 ### Parameter Alignment
+
+#### Primary Constructor Parameters (C# 12+)
+When a class, record, or struct has a primary constructor with more than 2 parameters, each parameter is placed on a separate line with proper indentation.
+
+**Before:**
+```csharp
+public class MyService(ILogger logger, ICache cache, IConfig config)
+{
+}
+```
+
+**After:**
+```csharp
+public class MyService(
+    ILogger logger,
+    ICache cache,
+    IConfig config
+)
+{
+}
+```
 
 #### Constructor Parameters (>2 parameters)
 When a constructor has more than 2 parameters, each parameter is placed on a separate line with proper indentation.
@@ -76,6 +127,7 @@ The extension can be configured through Visual Studio's Options dialog:
    - **Enable Plugin**: Controls whether the extension is active (default: `true`)
    - **Enable Align**: Controls whether the alignment features are enabled (default: `true`)
    - **Format On Save**: Automatically apply alignment formatting when saving files (default: `true`)
+   - **Sort By Type Length**: Sort aligned declarations by type name length, shortest first (default: `true`)
 
 ## Usage
 
@@ -84,8 +136,13 @@ The extension integrates seamlessly with Visual Studio's formatting features:
 ### Format Document
 
 1. Open a C# file in Visual Studio
-2. Press your configured format document shortcut (default: **Ctrl+K, Ctrl+D**) or use **Edit** > **Advanced** > **Format Document**
+2. Press your configured format document shortcut:
+   - **Ctrl+K, Ctrl+D** (default Format Document)
+   - **Ctrl+Shift+F** (alternative Format Document)
+   - Or use **Edit** > **Advanced** > **Format Document**
 3. The extension will apply alignment formatting in addition to standard formatting
+
+The cursor position is preserved during formatting, ensuring a smooth editing experience.
 
 ### Format On Save
 
@@ -96,7 +153,11 @@ When **Format On Save** is enabled in the options:
 3. Save the file (Ctrl+S or File > Save)
 4. The extension will automatically apply alignment formatting when you save
 
-This feature works non-intrusively - it only applies alignment formatting, without affecting any other save operations or triggering unwanted side effects.
+This feature works non-intrusively:
+- It only applies alignment formatting, without affecting other save operations
+- The cursor position is preserved after formatting
+- It prevents duplicate formatting on repeated saves (idempotent)
+- It does not trigger unwanted side effects
 
 ## Requirements
 

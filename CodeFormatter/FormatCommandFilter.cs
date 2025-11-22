@@ -13,7 +13,12 @@ namespace CodeFormatter
     /// </summary>
     internal sealed class FormatCommandFilter : IOleCommandTarget
     {
-        private const uint ECMD_FORMATDOCUMENT = 84;
+        // VSStd2K commands
+        private const uint ECMD_FORMATDOCUMENT = 84;      // Ctrl+K, Ctrl+D
+        private const uint ECMD_FORMATSELECTION = 85;     // Ctrl+K, Ctrl+F
+        
+        // VSStd97 commands  
+        private const uint cmdidFormatDocument = 247;     // Alternative format document command
 
         private readonly IWpfTextView textView;
         private readonly SVsServiceProvider serviceProvider;
@@ -93,14 +98,34 @@ namespace CodeFormatter
         {
             ThreadHelper.ThrowIfNotOnUIThread();
 
-            // Check if this is a format document command
-            // VSStd2K command group, Format Document command ID
-            if (pguidCmdGroup == VSConstants.VSStd2K && nCmdID == ECMD_FORMATDOCUMENT)
+            bool isFormatCommand = false;
+
+            // Check for various format document commands
+            if (pguidCmdGroup == VSConstants.VSStd2K)
+            {
+                if (nCmdID == ECMD_FORMATDOCUMENT || nCmdID == ECMD_FORMATSELECTION)
+                {
+                    isFormatCommand = true;
+                    System.Diagnostics.Debug.WriteLine($"Format command detected: VSStd2K command {nCmdID}");
+                }
+            }
+            else if (pguidCmdGroup == VSConstants.GUID_VSStandardCommandSet97)
+            {
+                if (nCmdID == cmdidFormatDocument)
+                {
+                    isFormatCommand = true;
+                    System.Diagnostics.Debug.WriteLine($"Format command detected: VSStd97 command {nCmdID}");
+                }
+            }
+
+            if (isFormatCommand)
             {
                 // Execute the original format command first
-                int result =
-                    nextCommandTarget?.Exec(ref pguidCmdGroup, nCmdID, nCmdexecopt, pvaIn, pvaOut)
-                    ?? VSConstants.S_OK;
+                int result = VSConstants.S_OK;
+                if (nextCommandTarget != null)
+                {
+                    result = nextCommandTarget.Exec(ref pguidCmdGroup, nCmdID, nCmdexecopt, pvaIn, pvaOut);
+                }
 
                 // Then apply our alignment
                 ApplyAlignment();
@@ -126,7 +151,16 @@ namespace CodeFormatter
         private void ApplyAlignment()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            AlignmentHelper.ApplyAlignment(textView, serviceProvider, alignService, checkFormatOnSave: false);
+            
+            try
+            {
+                AlignmentHelper.ApplyAlignment(textView, serviceProvider, alignService, checkFormatOnSave: false);
+                System.Diagnostics.Debug.WriteLine("Alignment applied successfully via format command");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error applying alignment: {ex}");
+            }
         }
     }
 }
