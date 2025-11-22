@@ -385,7 +385,7 @@ namespace CodeFormatter
                         .ToList();
                     
                     indices = sortedIndices;
-                    fields = indices.Select(idx => allMembers[idx] as FieldDeclarationSyntax).ToList();
+                    fields = indices.Select(idx => allMembers[idx] as FieldDeclarationSyntax).Where(f => f != null).ToList();
                 }
 
                 // Calculate alignment positions

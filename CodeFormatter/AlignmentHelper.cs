@@ -101,14 +101,32 @@ namespace CodeFormatter
                                 int targetLineNumber = -1;
                                 if (newSnapshot != null)
                                 {
-                                    // Try to find the line with the same content as the original caret line
-                                    for (int i = 0; i < newSnapshot.LineCount; i++)
+                                    // Optimize search: check original position first, then search nearby lines
+                                    // Most formatting operations don't move lines far
+                                    int searchStart = Math.Max(0, caretLine - 10);
+                                    int searchEnd = Math.Min(newSnapshot.LineCount, caretLine + 10);
+                                    
+                                    // First check the original line number if it exists
+                                    if (caretLine < newSnapshot.LineCount)
                                     {
-                                        var line = newSnapshot.GetLineFromLineNumber(i);
+                                        var line = newSnapshot.GetLineFromLineNumber(caretLine);
                                         if (line.GetText() == originalLineContent)
                                         {
-                                            targetLineNumber = i;
-                                            break;
+                                            targetLineNumber = caretLine;
+                                        }
+                                    }
+                                    
+                                    // If not found, search nearby lines
+                                    if (targetLineNumber == -1)
+                                    {
+                                        for (int i = searchStart; i < searchEnd; i++)
+                                        {
+                                            var line = newSnapshot.GetLineFromLineNumber(i);
+                                            if (line.GetText() == originalLineContent)
+                                            {
+                                                targetLineNumber = i;
+                                                break;
+                                            }
                                         }
                                     }
 
