@@ -4,6 +4,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 
 namespace CodeFormatter
 {
@@ -12,13 +13,17 @@ namespace CodeFormatter
     /// </summary>
     public class AlignService
     {
+        private bool sortByTypeLength = true;
+
         /// <summary>
         /// Formats the given code with alignment
         /// </summary>
-        public string FormatCode(string code)
+        public string FormatCode(string code, bool sortByTypeLength = true)
         {
             if (string.IsNullOrEmpty(code))
                 return code;
+
+            this.sortByTypeLength = sortByTypeLength;
 
             try
             {
@@ -27,9 +32,15 @@ namespace CodeFormatter
 
                 // Apply alignment transformations
                 var newRoot = AlignParameters(root);
-                newRoot = AlignVariableAssignments(newRoot);
+                newRoot = AlignAssignments(newRoot);
 
-                return newRoot.ToFullString();
+                var result = newRoot.ToFullString();
+                
+                // Ensure idempotency - if result is same as input, return input to avoid unnecessary updates
+                if (result == code)
+                    return code;
+
+                return result;
             }
             catch (Exception ex)
             {
@@ -40,7 +51,7 @@ namespace CodeFormatter
         }
 
         /// <summary>
-        /// Aligns parameters for constructors (>2 params) and methods (>3 params)
+        /// Aligns parameters for constructors (>2 params), methods (>3 params), and primary constructors (>2 params)
         /// </summary>
         private SyntaxNode AlignParameters(SyntaxNode root)
         {
@@ -49,11 +60,11 @@ namespace CodeFormatter
         }
 
         /// <summary>
-        /// Aligns variable assignment = signs in consecutive lines
+        /// Aligns assignments: local variables, class fields, and property assignments
         /// </summary>
-        private SyntaxNode AlignVariableAssignments(SyntaxNode root)
+        private SyntaxNode AlignAssignments(SyntaxNode root)
         {
-            var rewriter = new AssignmentAlignmentRewriter();
+            var rewriter = new AssignmentAlignmentRewriter(sortByTypeLength);
             return rewriter.Visit(root);
         }
 
@@ -86,6 +97,45 @@ namespace CodeFormatter
                 }
 
                 return base.VisitConstructorDeclaration(node);
+            }
+
+            public override SyntaxNode VisitClassDeclaration(ClassDeclarationSyntax node)
+            {
+                // Handle primary constructors (C# 12+)
+                if (node.ParameterList != null && node.ParameterList.Parameters.Count > 2)
+                {
+                    var indentation = DetectIndentation(node);
+                    var newParameterList = FormatParameterList(node.ParameterList, indentation);
+                    node = node.WithParameterList(newParameterList);
+                }
+
+                return base.VisitClassDeclaration(node);
+            }
+
+            public override SyntaxNode VisitRecordDeclaration(RecordDeclarationSyntax node)
+            {
+                // Handle record primary constructors
+                if (node.ParameterList != null && node.ParameterList.Parameters.Count > 2)
+                {
+                    var indentation = DetectIndentation(node);
+                    var newParameterList = FormatParameterList(node.ParameterList, indentation);
+                    node = node.WithParameterList(newParameterList);
+                }
+
+                return base.VisitRecordDeclaration(node);
+            }
+
+            public override SyntaxNode VisitStructDeclaration(StructDeclarationSyntax node)
+            {
+                // Handle struct primary constructors
+                if (node.ParameterList != null && node.ParameterList.Parameters.Count > 2)
+                {
+                    var indentation = DetectIndentation(node);
+                    var newParameterList = FormatParameterList(node.ParameterList, indentation);
+                    node = node.WithParameterList(newParameterList);
+                }
+
+                return base.VisitStructDeclaration(node);
             }
 
             private string DetectIndentation(SyntaxNode node)
@@ -148,43 +198,145 @@ namespace CodeFormatter
         }
 
         /// <summary>
-        /// Rewriter for aligning variable assignments
+        /// Rewriter for aligning variable and field assignments
         /// </summary>
         private class AssignmentAlignmentRewriter : CSharpSyntaxRewriter
         {
+            private readonly bool sortByTypeLength;
+
+            public AssignmentAlignmentRewriter(bool sortByTypeLength)
+            {
+                this.sortByTypeLength = sortByTypeLength;
+            }
+
+            // Handle local variables in blocks
             public override SyntaxNode VisitBlock(BlockSyntax node)
             {
                 var statements = node.Statements.ToList();
-                var newStatements = new List<StatementSyntax>();
+                var newStatements = ProcessStatements(statements);
+                return node.WithStatements(SyntaxFactory.List(newStatements));
+            }
 
+            // Handle class/struct fields
+            public override SyntaxNode VisitClassDeclaration(ClassDeclarationSyntax node)
+            {
+                var members = node.Members.ToList();
+                var newMembers = ProcessMembers(members);
+                node = node.WithMembers(SyntaxFactory.List(newMembers));
+                return base.VisitClassDeclaration(node);
+            }
+
+            public override SyntaxNode VisitStructDeclaration(StructDeclarationSyntax node)
+            {
+                var members = node.Members.ToList();
+                var newMembers = ProcessMembers(members);
+                node = node.WithMembers(SyntaxFactory.List(newMembers));
+                return base.VisitStructDeclaration(node);
+            }
+
+            private List<MemberDeclarationSyntax> ProcessMembers(List<MemberDeclarationSyntax> members)
+            {
+                var newMembers = new List<MemberDeclarationSyntax>();
                 int i = 0;
+
+                while (i < members.Count)
+                {
+                    // Find consecutive field declarations with initializers
+                    // NOTE: Only fields are aligned, NOT properties
+                    var group = new List<int> { i };
+                    
+                    if (members[i] is FieldDeclarationSyntax firstField && HasInitializer(firstField))
+                    {
+                        while (i + 1 < members.Count)
+                        {
+                            if (members[i + 1] is FieldDeclarationSyntax nextField && HasInitializer(nextField))
+                            {
+                                int currentLine = GetLineNumber(members[group.Last()]);
+                                int nextLine = GetLineNumber(members[i + 1]);
+                                
+                                // Check if next member is consecutive
+                                if (nextLine - currentLine <= 1)
+                                {
+                                    i++;
+                                    group.Add(i);
+                                }
+                                else
+                                {
+                                    break;
+                                }
+                            }
+                            else
+                            {
+                                break;
+                            }
+                        }
+
+                        // Align the group if it has more than one member
+                        if (group.Count > 1)
+                        {
+                            var alignedGroup = AlignFieldGroup(members, group);
+                            newMembers.AddRange(alignedGroup);
+                        }
+                        else
+                        {
+                            newMembers.Add(members[i]);
+                        }
+                    }
+                    else
+                    {
+                        newMembers.Add(members[i]);
+                    }
+
+                    i++;
+                }
+
+                return newMembers;
+            }
+
+            private bool HasInitializer(FieldDeclarationSyntax field)
+            {
+                return field.Declaration.Variables.Any(v => v.Initializer != null);
+            }
+
+            private List<StatementSyntax> ProcessStatements(List<StatementSyntax> statements)
+            {
+                var newStatements = new List<StatementSyntax>();
+                int i = 0;
+
                 while (i < statements.Count)
                 {
                     // Find consecutive assignment statements
                     var group = new List<int> { i };
                     
-                    while (i + 1 < statements.Count)
+                    if (IsAssignmentStatement(statements[i]))
                     {
-                        int currentLine = GetLineNumber(statements[group.Last()]);
-                        int nextLine = GetLineNumber(statements[i + 1]);
-                        
-                        // Check if next statement is consecutive and is an assignment
-                        if (nextLine - currentLine <= 1 && IsAssignmentStatement(statements[i + 1]))
+                        while (i + 1 < statements.Count)
                         {
-                            i++;
-                            group.Add(i);
+                            int currentLine = GetLineNumber(statements[group.Last()]);
+                            int nextLine = GetLineNumber(statements[i + 1]);
+                            
+                            // Check if next statement is consecutive and is an assignment
+                            if (nextLine - currentLine <= 1 && IsAssignmentStatement(statements[i + 1]))
+                            {
+                                i++;
+                                group.Add(i);
+                            }
+                            else
+                            {
+                                break;
+                            }
+                        }
+
+                        // Align the group if it has more than one statement
+                        if (group.Count > 1)
+                        {
+                            var alignedGroup = AlignStatementGroup(statements, group);
+                            newStatements.AddRange(alignedGroup);
                         }
                         else
                         {
-                            break;
+                            newStatements.Add(statements[i]);
                         }
-                    }
-
-                    // Align the group if it has more than one statement
-                    if (group.Count > 1)
-                    {
-                        var alignedGroup = AlignAssignmentGroup(statements, group);
-                        newStatements.AddRange(alignedGroup);
                     }
                     else
                     {
@@ -194,7 +346,7 @@ namespace CodeFormatter
                     i++;
                 }
 
-                return node.WithStatements(SyntaxFactory.List(newStatements));
+                return newStatements;
             }
 
             private bool IsAssignmentStatement(StatementSyntax statement)
@@ -212,80 +364,194 @@ namespace CodeFormatter
                 return false;
             }
 
-            private int GetLineNumber(StatementSyntax statement)
+            private int GetLineNumber(SyntaxNode node)
             {
-                return statement.GetLocation().GetLineSpan().StartLinePosition.Line;
+                return node.GetLocation().GetLineSpan().StartLinePosition.Line;
             }
 
-            private List<StatementSyntax> AlignAssignmentGroup(List<StatementSyntax> allStatements, List<int> indices)
+            private List<MemberDeclarationSyntax> AlignFieldGroup(List<MemberDeclarationSyntax> allMembers, List<int> indices)
             {
-                // Find the position of the equals sign in each statement
-                var positions = indices.Select(idx => GetEqualsPosition(allStatements[idx])).ToList();
-
-                // Find maximum position
-                int maxPos = positions.Max();
-
-                // Align each statement
-                var result = new List<StatementSyntax>();
-                for (int i = 0; i < indices.Count; i++)
+                var fields = indices.Select(idx => allMembers[idx] as FieldDeclarationSyntax).ToList();
+                
+                // Sort if enabled
+                if (sortByTypeLength)
                 {
-                    var statement = allStatements[indices[i]];
-                    int currentPos = positions[i];
-                    int spacesToAdd = maxPos - currentPos;
+                    var sortedIndices = indices
+                        .Select((idx, order) => new { Index = idx, Order = order, Field = allMembers[idx] as FieldDeclarationSyntax })
+                        .Where(x => x.Field != null)
+                        .OrderBy(x => GetTypeText(x.Field.Declaration.Type).Length)
+                        .ThenBy(x => x.Order)
+                        .Select(x => x.Index)
+                        .ToList();
+                    
+                    indices = sortedIndices;
+                    fields = indices.Select(idx => allMembers[idx] as FieldDeclarationSyntax).Where(f => f != null).ToList();
+                }
 
-                    if (spacesToAdd > 0)
-                    {
-                        statement = AddSpacesBeforeEquals(statement, spacesToAdd);
-                    }
+                // Calculate alignment positions
+                var typePositions = fields.Select(GetTypeEndPosition).ToList();
+                var varPositions = fields.Select(GetVariableEndPosition).ToList();
+                
+                // Check if we have any positions to align (guard against empty collections)
+                if (typePositions.Count == 0 || varPositions.Count == 0)
+                    return new List<MemberDeclarationSyntax>(fields);
+                
+                var maxTypePos = typePositions.Max();
+                var maxVarPos = varPositions.Max();
 
+                var result = new List<MemberDeclarationSyntax>();
+                for (int i = 0; i < fields.Count; i++)
+                {
+                    var field = fields[i];
+                    var typePos = typePositions[i];
+                    var varPos = varPositions[i];
+
+                    // Align both type and variable name
+                    field = AlignFieldDeclaration(field, maxTypePos - typePos, maxVarPos - varPos);
+                    result.Add(field);
+                }
+
+                return result;
+            }
+
+            private List<StatementSyntax> AlignStatementGroup(List<StatementSyntax> allStatements, List<int> indices)
+            {
+                var statements = indices.Select(idx => allStatements[idx]).ToList();
+                
+                // Sort if enabled
+                if (sortByTypeLength)
+                {
+                    var sortedIndices = indices
+                        .Select((idx, order) => new { Index = idx, Order = order, Statement = allStatements[idx] })
+                        .OrderBy(x => GetStatementTypeLength(x.Statement))
+                        .ThenBy(x => x.Order)
+                        .Select(x => x.Index)
+                        .ToList();
+                    
+                    indices = sortedIndices;
+                    statements = indices.Select(idx => allStatements[idx]).ToList();
+                }
+
+                // Calculate alignment positions for both type and variable
+                var typePositions = statements.Select(GetStatementTypeEndPosition).ToList();
+                var varPositions = statements.Select(GetStatementVariableEndPosition).ToList();
+                
+                // Check if we have any positions to align (guard against empty collections)
+                if (typePositions.Count == 0 || varPositions.Count == 0)
+                    return statements;
+                
+                var maxTypePos = typePositions.Max();
+                var maxVarPos = varPositions.Max();
+
+                var result = new List<StatementSyntax>();
+                for (int i = 0; i < statements.Count; i++)
+                {
+                    var statement = statements[i];
+                    var typePos = typePositions[i];
+                    var varPos = varPositions[i];
+
+                    // Align both type and variable name
+                    statement = AlignStatement(statement, maxTypePos - typePos, maxVarPos - varPos);
                     result.Add(statement);
                 }
 
                 return result;
             }
 
-            private int GetEqualsPosition(StatementSyntax statement)
+            private int GetStatementTypeLength(StatementSyntax statement)
             {
-                var text = statement.ToFullString();
-                var lines = text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-                
-                if (lines.Length > 0)
+                if (statement is LocalDeclarationStatementSyntax localDecl)
                 {
-                    var firstLine = lines[0];
-                    int equalsIndex = firstLine.IndexOf('=');
-                    
-                    if (equalsIndex >= 0)
-                    {
-                        // Count non-whitespace characters before the equals sign
-                        return firstLine.Substring(0, equalsIndex).TrimEnd().Length;
-                    }
+                    return GetTypeText(localDecl.Declaration.Type).Length;
+                }
+                return 0;
+            }
+
+            private string GetTypeText(TypeSyntax type)
+            {
+                return type.ToString().Trim();
+            }
+
+            private int GetTypeEndPosition(FieldDeclarationSyntax field)
+            {
+                var typeText = GetTypeText(field.Declaration.Type);
+                var modifiers = field.Modifiers.ToFullString();
+                return modifiers.TrimEnd().Length + typeText.Length;
+            }
+
+            private int GetVariableEndPosition(FieldDeclarationSyntax field)
+            {
+                var firstVar = field.Declaration.Variables.First();
+                var text = field.ToFullString();
+                var varName = firstVar.Identifier.Text;
+                var varIndex = text.IndexOf(varName);
+                if (varIndex >= 0)
+                {
+                    return varIndex + varName.Length;
+                }
+                return GetTypeEndPosition(field) + varName.Length + 1;
+            }
+
+            private int GetStatementTypeEndPosition(StatementSyntax statement)
+            {
+                if (statement is LocalDeclarationStatementSyntax localDecl)
+                {
+                    return GetTypeText(localDecl.Declaration.Type).Length;
+                }
+                return 0;
+            }
+
+            private int GetStatementVariableEndPosition(StatementSyntax statement)
+            {
+                if (statement is LocalDeclarationStatementSyntax localDecl)
+                {
+                    var typeLen = GetTypeText(localDecl.Declaration.Type).Length;
+                    var firstVar = localDecl.Declaration.Variables.First();
+                    var varName = firstVar.Identifier.Text;
+                    return typeLen + varName.Length + 1; // +1 for space
+                }
+                
+                if (statement is ExpressionStatementSyntax expr && expr.Expression is AssignmentExpressionSyntax assignment)
+                {
+                    var leftText = assignment.Left.ToString().Trim();
+                    return leftText.Length;
                 }
 
                 return 0;
             }
 
-            private StatementSyntax AddSpacesBeforeEquals(StatementSyntax statement, int spacesToAdd)
+            private FieldDeclarationSyntax AlignFieldDeclaration(FieldDeclarationSyntax field, int typeSpaces, int varSpaces)
             {
-                if (statement is LocalDeclarationStatementSyntax localDecl)
+                if (typeSpaces <= 0 && varSpaces <= 0)
+                    return field;
+
+                var newDeclaration = field.Declaration;
+
+                // Add spaces after type if needed
+                if (typeSpaces > 0)
                 {
-                    var variables = localDecl.Declaration.Variables;
+                    var newType = field.Declaration.Type.WithTrailingTrivia(
+                        SyntaxFactory.Whitespace(new string(' ', typeSpaces) + " ")
+                    );
+                    newDeclaration = newDeclaration.WithType(newType);
+                }
+
+                // Add spaces after variable name if needed
+                if (varSpaces > 0)
+                {
+                    var variables = newDeclaration.Variables;
                     var newVariables = new SeparatedSyntaxList<VariableDeclaratorSyntax>();
-                    bool anyChanged = false;
 
                     foreach (var variable in variables)
                     {
                         if (variable.Initializer != null)
                         {
-                            var currentTrivia = variable.Initializer.EqualsToken.LeadingTrivia;
-                            var newTrivia = currentTrivia.Insert(0, SyntaxFactory.Whitespace(new string(' ', spacesToAdd)));
-
-                            var newInitializer = variable.Initializer.WithEqualsToken(
-                                variable.Initializer.EqualsToken.WithLeadingTrivia(newTrivia)
+                            var newVar = variable.WithIdentifier(
+                                variable.Identifier.WithTrailingTrivia(
+                                    SyntaxFactory.Whitespace(new string(' ', varSpaces))
+                                )
                             );
-
-                            var newVariable = variable.WithInitializer(newInitializer);
-                            newVariables = newVariables.Add(newVariable);
-                            anyChanged = true;
+                            newVariables = newVariables.Add(newVar);
                         }
                         else
                         {
@@ -293,23 +559,70 @@ namespace CodeFormatter
                         }
                     }
 
-                    if (anyChanged)
+                    newDeclaration = newDeclaration.WithVariables(newVariables);
+                }
+
+                return field.WithDeclaration(newDeclaration);
+            }
+
+            private StatementSyntax AlignStatement(StatementSyntax statement, int typeSpaces, int varSpaces)
+            {
+                if (typeSpaces <= 0 && varSpaces <= 0)
+                    return statement;
+
+                if (statement is LocalDeclarationStatementSyntax localDecl)
+                {
+                    var newDeclaration = localDecl.Declaration;
+
+                    // Add spaces after type if needed
+                    if (typeSpaces > 0)
                     {
-                        var newDeclaration = localDecl.Declaration.WithVariables(newVariables);
-                        return localDecl.WithDeclaration(newDeclaration);
+                        var newType = localDecl.Declaration.Type.WithTrailingTrivia(
+                            SyntaxFactory.Whitespace(new string(' ', typeSpaces) + " ")
+                        );
+                        newDeclaration = newDeclaration.WithType(newType);
                     }
+
+                    // Add spaces after variable name if needed
+                    if (varSpaces > 0)
+                    {
+                        var variables = newDeclaration.Variables;
+                        var newVariables = new SeparatedSyntaxList<VariableDeclaratorSyntax>();
+
+                        foreach (var variable in variables)
+                        {
+                            if (variable.Initializer != null)
+                            {
+                                var newVar = variable.WithIdentifier(
+                                    variable.Identifier.WithTrailingTrivia(
+                                        SyntaxFactory.Whitespace(new string(' ', varSpaces))
+                                    )
+                                );
+                                newVariables = newVariables.Add(newVar);
+                            }
+                            else
+                            {
+                                newVariables = newVariables.Add(variable);
+                            }
+                        }
+
+                        newDeclaration = newDeclaration.WithVariables(newVariables);
+                    }
+
+                    return localDecl.WithDeclaration(newDeclaration);
                 }
                 else if (statement is ExpressionStatementSyntax expr && 
                          expr.Expression is AssignmentExpressionSyntax assignment)
                 {
-                    var currentTrivia = assignment.OperatorToken.LeadingTrivia;
-                    var newTrivia = currentTrivia.Insert(0, SyntaxFactory.Whitespace(new string(' ', spacesToAdd)));
-                    
-                    var newAssignment = assignment.WithOperatorToken(
-                        assignment.OperatorToken.WithLeadingTrivia(newTrivia)
-                    );
-                    
-                    return expr.WithExpression(newAssignment);
+                    // For simple assignments (like aesAlg.Key = ...), add spaces before equals
+                    if (varSpaces > 0)
+                    {
+                        var newLeft = assignment.Left.WithTrailingTrivia(
+                            SyntaxFactory.Whitespace(new string(' ', varSpaces))
+                        );
+                        var newAssignment = assignment.WithLeft(newLeft);
+                        return expr.WithExpression(newAssignment);
+                    }
                 }
 
                 return statement;
