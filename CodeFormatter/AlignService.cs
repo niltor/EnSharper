@@ -389,7 +389,13 @@ namespace CodeFormatter
 
             private List<MemberDeclarationSyntax> AlignFieldGroup(List<MemberDeclarationSyntax> allMembers, List<int> indices)
             {
-                var fields = indices.Select(idx => allMembers[idx] as FieldDeclarationSyntax).ToList();
+                var fields = indices.Select(idx => allMembers[idx] as FieldDeclarationSyntax)
+                    .Where(f => f != null && f.Declaration.Variables.Count > 0)
+                    .ToList();
+
+                // If no valid fields after filtering, return empty list
+                if (fields.Count == 0)
+                    return new List<MemberDeclarationSyntax>();
 
                 // Calculate alignment positions for types
                 var typePositions = fields.Select(GetTypeEndPosition).ToList();
@@ -435,6 +441,29 @@ namespace CodeFormatter
             {
                 var statements = indices.Select(idx => allStatements[idx]).ToList();
 
+                // Filter and validate statements
+                var validStatements = new List<StatementSyntax>();
+                foreach (var stmt in statements)
+                {
+                    if (stmt is LocalDeclarationStatementSyntax localDecl)
+                    {
+                        if (localDecl.Declaration.Variables.Count > 0)
+                            validStatements.Add(stmt);
+                    }
+                    else if (stmt is ExpressionStatementSyntax expr && 
+                             expr.Expression is AssignmentExpressionSyntax)
+                    {
+                        validStatements.Add(stmt);
+                    }
+                }
+
+                // If no valid statements after filtering, return original
+                if (validStatements.Count == 0)
+                    return statements;
+
+                // Use validated statements for processing
+                statements = validStatements;
+
                 // Calculate alignment positions for types
                 var typePositions = statements.Select(GetStatementTypeEndPosition).ToList();
                 
@@ -453,11 +482,18 @@ namespace CodeFormatter
                     
                     if (statement is LocalDeclarationStatementSyntax localDecl)
                     {
-                        var firstVar = localDecl.Declaration.Variables.First();
-                        var varName = firstVar.Identifier.Text;
-                        // After type alignment, all types end at maxTypePos
-                        // Variable starts 1 space after that
-                        varEndPos = maxTypePos + 1 + varName.Length;
+                        if (localDecl.Declaration.Variables.Count == 0)
+                        {
+                            varEndPos = 0;
+                        }
+                        else
+                        {
+                            var firstVar = localDecl.Declaration.Variables.First();
+                            var varName = firstVar.Identifier.Text;
+                            // After type alignment, all types end at maxTypePos
+                            // Variable starts 1 space after that
+                            varEndPos = maxTypePos + 1 + varName.Length;
+                        }
                     }
                     else if (statement is ExpressionStatementSyntax expr && 
                              expr.Expression is AssignmentExpressionSyntax assignment)
