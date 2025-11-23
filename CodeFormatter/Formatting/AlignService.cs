@@ -1,6 +1,5 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.Formatting;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -50,17 +49,44 @@ namespace CodeFormatter
         /// <summary>
         /// Formats the given code with Roslyn default formatting + custom alignment
         /// </summary>
-        public string FormatCode(string code)
+        /// <param name="code">Source code to format</param>
+        /// <param name="skipRoslynFormatting">If true, skip Roslyn formatting and only apply alignment (useful when VS already formatted)</param>
+        public string FormatCode(string code, bool skipRoslynFormatting = false)
         {
             if (string.IsNullOrEmpty(code))
                 return code;
             try
             {  
                 var tree = CSharpSyntaxTree.ParseText(code);
-                var formattedRoot = Formatter.Format(tree.GetRoot(), new AdhocWorkspace());
+                var root = tree.GetRoot();
+                
+                // IMPORTANT: We should NEVER apply Roslyn formatting in a VS extension
+                // because we cannot replicate the user's .editorconfig and VS settings.
+                // The IDE's formatter is much more sophisticated and respects user preferences.
+                // Our job is ONLY to apply custom alignment.
+                SyntaxNode formattedRoot = root;
+                
+                if (!skipRoslynFormatting)
+                {
+                    // Log a warning if someone tries to use built-in formatting
+                    Logger.LogDebug("AlignService", "WARNING: skipRoslynFormatting=false is deprecated. Use IDE formatting instead.");
+                }
+                
+                Logger.LogDebug("AlignService", "Applying custom alignment only (skipping Roslyn formatting)");
+                
+                // Apply custom alignment
                 var alignedRoot = ApplyAlignmentProcessors(formattedRoot);
                 var result = alignedRoot.ToFullString();
-                return result == code ? code : result;
+                
+                // CRITICAL: Compare result with original to avoid round-trip artifacts
+                if (result == code)
+                {
+                    Logger.LogDebug("AlignService", "Result identical to input - returning original to avoid artifacts");
+                    return code;
+                }
+                
+                Logger.LogDebug("AlignService", $"Alignment changed content (delta: {result.Length - code.Length} chars)");
+                return result;
             }
             catch (Exception ex)
             {

@@ -18,6 +18,9 @@ namespace CodeFormatter
 
         private readonly SVsServiceProvider serviceProvider;
         private EnvDTE.CommandEvents commandEvents;
+        private DateTime lastExecutionTime = DateTime.MinValue;
+        private string lastFormattedContent = null;
+        private const int DebounceMilliseconds = 100;
 
         private GlobalKeyboardShortcutListener(SVsServiceProvider serviceProvider)
         {
@@ -83,7 +86,21 @@ namespace CodeFormatter
 
             try
             {
-                // Get active text view
+                // ??????????????????Roslyn + ???
+                // ?????????????? VS ????????
+                
+                var now = DateTime.Now;
+                var timeSinceLastExecution = (now - lastExecutionTime).TotalMilliseconds;
+                
+                if (timeSinceLastExecution < DebounceMilliseconds)
+                {
+                    Logger.LogDebug("GlobalKeyboardShortcutListener", 
+                        $"Debounced - {timeSinceLastExecution:F0}ms since last execution");
+                    return;
+                }
+
+                lastExecutionTime = now;
+
                 var textView = GetActiveTextView();
                 if (textView == null)
                 {
@@ -91,12 +108,40 @@ namespace CodeFormatter
                     return;
                 }
 
-                Logger.LogDebug("GlobalKeyboardShortcutListener", "Applying alignment to active text view");
+                var textBuffer = textView.TextBuffer;
+                if (textBuffer == null)
+                {
+                    return;
+                }
 
+                var contentBeforeAlignment = textBuffer.CurrentSnapshot.GetText();
+
+                // ??????????????????
+                if (lastFormattedContent == contentBeforeAlignment)
+                {
+                    Logger.LogDebug("GlobalKeyboardShortcutListener", 
+                        "Content unchanged since last format - skipping");
+                    return;
+                }
+
+                Logger.LogDebug("GlobalKeyboardShortcutListener", "Applying formatting (Roslyn + alignment)");
+
+                // The IDE has already applied default formatting when user presses format shortcut
+                // We only need to apply our custom alignment on top of that
                 var alignService = AlignServiceFactory.CreateFromOptions(serviceProvider);
-                FormattingCoordinator.TryFormat(textView, serviceProvider, alignService);
+                bool formatted = FormattingCoordinator.TryFormat(textView, serviceProvider, alignService);
                 
-                Logger.LogDebug("GlobalKeyboardShortcutListener", "Alignment applied successfully");
+                if (formatted)
+                {
+                    lastFormattedContent = textBuffer.CurrentSnapshot.GetText();
+                    Logger.LogDebug("GlobalKeyboardShortcutListener", "Custom alignment applied successfully");
+                }
+                else
+                {
+                    // ?????????????????????
+                    lastFormattedContent = contentBeforeAlignment;
+                    Logger.LogDebug("GlobalKeyboardShortcutListener", "No alignment changes needed");
+                }
             }
             catch (Exception ex)
             {

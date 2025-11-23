@@ -238,6 +238,15 @@ namespace CodeFormatter
 
                 var maxVarPos = varPositions.Max();
 
+                // ??????
+                Logger.LogDebug("AlignService", $"Field alignment: types [{typePositions.Min()}-{maxTypePos}], vars [{varPositions.Min()}-{maxVarPos}]");
+                for (int i = 0; i < fields.Count; i++)
+                {
+                    var field = fields[i];
+                    var varName = field.Declaration.Variables.FirstOrDefault()?.Identifier.Text ?? "";
+                    Logger.LogDebug("AlignService", $"  Field {i}: type@{typePositions[i]} var'{varName}'@{varPositions[i]} ? typeSpaces={maxTypePos - typePositions[i]} varSpaces={maxVarPos - varPositions[i]}");
+                }
+
                 var result = new List<MemberDeclarationSyntax>();
                 for (int i = 0; i < fields.Count; i++)
                 {

@@ -14,6 +14,9 @@ namespace CodeFormatter
     {
         private const int CursorSearchRange = 10;
 
+        /// <summary>
+        /// Formats the document with custom alignment
+        /// </summary>
         public static bool TryFormat(IWpfTextView textView, SVsServiceProvider serviceProvider, AlignService alignService)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
@@ -25,10 +28,13 @@ namespace CodeFormatter
             {
                 var options = AlignServiceFactory.GetAlignOptions(serviceProvider);
                 if (options == null || !options.EnablePlugin)
+                {
+                    Logger.LogDebug("FormattingCoordinator", "Plugin disabled");
                     return false;
+                }
 
-                if (!options.FormatOnSave)
-                    return false;
+                // FormatOnSave check removed - we only format when explicitly called
+                // (via Format Document shortcut, not on save)
 
                 var caret = textView.Caret.Position.BufferPosition;
                 var caretLine = caret.GetContainingLine().LineNumber;
@@ -41,10 +47,23 @@ namespace CodeFormatter
                 var snapshot = textView.TextBuffer.CurrentSnapshot;
                 var text = snapshot.GetText();
 
-                var formattedText = alignService.FormatCode(text);
-                if (formattedText == text)
+                Logger.LogDebug("FormattingCoordinator", $"Current text length: {text.Length}");
+                
+                // Always skip Roslyn formatting - we only do custom alignment
+                // The IDE's formatter (which user invokes) handles standard formatting
+                var formattedText = alignService.FormatCode(text, skipRoslynFormatting: true);
+                
+                bool isEqual = formattedText == text;
+                Logger.LogDebug("FormattingCoordinator", $"Formatted text length: {formattedText.Length}, Equal: {isEqual}");
+                
+                if (isEqual)
+                {
+                    Logger.LogDebug("FormattingCoordinator", "No changes needed - skipping edit");
                     return false;
+                }
 
+                Logger.LogDebug("FormattingCoordinator", "Applying text edit");
+                
                 using (var edit = textView.TextBuffer.CreateEdit())
                 {
                     if (edit.Snapshot != snapshot)
@@ -57,6 +76,8 @@ namespace CodeFormatter
                     edit.Replace(0, snapshot.Length, formattedText);
                     var newSnapshot = edit.Apply();
 
+                    Logger.LogDebug("FormattingCoordinator", "Text edit applied successfully");
+                    
                     RestoreCaretAndViewport(textView, snapshot, newSnapshot, caretLine, caretColumn, topLine, topLineOffset);
                 }
 
@@ -133,6 +154,29 @@ namespace CodeFormatter
             {
                 Logger.LogDebug("FormattingCoordinator", $"Failed to restore caret/viewport: {ex.Message}");
             }
+        }
+
+        private static string EscapeChar(char c)
+        {
+            switch (c)
+            {
+                case '\r': return "\\r";
+                case '\n': return "\\n";
+                case '\t': return "\\t";
+                case ' ': return "<space>";
+                default: return c.ToString();
+            }
+        }
+
+        private static string EscapeString(string s)
+        {
+            if (string.IsNullOrEmpty(s))
+                return "<empty>";
+            
+            if (s.Length > 50)
+                s = s.Substring(0, 50) + "...";
+            
+            return s.Replace("\r", "\\r").Replace("\n", "\\n").Replace("\t", "\\t");
         }
     }
 }

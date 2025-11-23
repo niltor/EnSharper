@@ -16,15 +16,17 @@ namespace CodeFormatter
         [LocDescription("EnablePluginDescription")]
         public bool EnablePlugin { get; set; } = true;
 
-        [LocCategory("CategoryGeneral")]
-        [LocDisplayName("FormatOnSaveDisplayName")]
-        [LocDescription("FormatOnSaveDescription")]
-        public bool FormatOnSave { get; set; } = true;
+        // FormatOnSave is removed because it conflicts with VS's built-in Format on Save
+        // Users should use Format Document shortcut (Ctrl+K, Ctrl+D) instead
+        // [LocCategory("CategoryGeneral")]
+        // [LocDisplayName("FormatOnSaveDisplayName")]
+        // [LocDescription("FormatOnSaveDescription")]
+        // public bool FormatOnSave { get; set; } = true;
 
         [LocCategory("CategoryAlignment")]
         [LocDisplayName("MaxAlignmentGapDisplayName")]
         [LocDescription("MaxAlignmentGapDescription")]
-        public int MaxAlignmentGap { get; set; } = 10;
+        public int MaxAlignmentGap { get; set; } = 50; // ??? 50?????????
 
         [LocCategory("CategoryAlignment")]
         [LocDisplayName("MaxFileSizeDisplayName")]

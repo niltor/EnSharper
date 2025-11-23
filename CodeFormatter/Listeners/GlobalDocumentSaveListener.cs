@@ -169,14 +169,25 @@ namespace CodeFormatter
                         return VSConstants.S_OK;
                     }
 
-                    // Format the active document
+                    // Apply custom alignment
+                    // Note: VS's Format on Save (if enabled) runs BEFORE OnBeforeSave,
+                    // so by the time we get here, IDE formatting is already done.
+                    // We only need to apply our custom alignment.
                     var alignService = AlignServiceFactory.CreateFromOptions(serviceProvider);
-                    FormattingCoordinator.TryFormat(textView, serviceProvider, alignService);
+                    bool formatted = FormattingCoordinator.TryFormat(textView, serviceProvider, alignService);
 
-                    // Remember formatted text
-                    lastFormattedTextByPath[documentPath] = textBuffer.CurrentSnapshot.GetText();
-
-                    Logger.LogDebug("GlobalDocumentSaveListener", "Formatting applied on save");
+                    if (formatted)
+                    {
+                        // Remember formatted text to skip next save if unchanged
+                        lastFormattedTextByPath[documentPath] = textBuffer.CurrentSnapshot.GetText();
+                        Logger.LogDebug("GlobalDocumentSaveListener", "Custom alignment applied on save");
+                    }
+                    else
+                    {
+                        // No changes, but remember current text
+                        lastFormattedTextByPath[documentPath] = currentText;
+                        Logger.LogDebug("GlobalDocumentSaveListener", "No alignment changes needed on save");
+                    }
                 }
                 finally
                 {
@@ -188,7 +199,6 @@ namespace CodeFormatter
             }
             catch (Exception ex)
             {
-                ActivityLog.LogError("CodeFormatter.GlobalDocumentSaveListener", $"Error in OnBeforeSave: {ex}");
                 Logger.LogError("GlobalDocumentSaveListener.OnBeforeSave", ex.ToString());
             }
             finally
@@ -196,6 +206,11 @@ namespace CodeFormatter
                 isFormatting = false;
             }
 
+            return VSConstants.S_OK;
+        }
+
+        public int OnAfterSave(uint docCookie)
+        {
             return VSConstants.S_OK;
         }
 
@@ -262,11 +277,6 @@ namespace CodeFormatter
         }
 
         public int OnBeforeLastDocumentUnlock(uint docCookie, uint dwRDTLockType, uint dwReadLocksRemaining, uint dwEditLocksRemaining)
-        {
-            return VSConstants.S_OK;
-        }
-
-        public int OnAfterSave(uint docCookie)
         {
             return VSConstants.S_OK;
         }
