@@ -15,7 +15,6 @@ namespace CodeFormatter
     {
         private readonly IWpfTextView textView;
         private readonly SVsServiceProvider serviceProvider;
-        private readonly AlignService alignService;
         private uint rdtCookie;
         private IVsRunningDocumentTable rdt;
         private bool isFormatting = false;
@@ -25,7 +24,6 @@ namespace CodeFormatter
         {
             this.textView = textView;
             this.serviceProvider = serviceProvider;
-            this.alignService = new AlignService();
         }
 
         public static DocumentSaveListener Create(
@@ -158,6 +156,9 @@ namespace CodeFormatter
                             System.Diagnostics.Debug.WriteLine("DocumentSaveListener: Skipping format - text unchanged since last format");
                             return VSConstants.S_OK;
                         }
+
+                        // Get configured AlignService
+                        var alignService = AlignServiceFactory.CreateFromOptions(serviceProvider);
 
                         // Apply alignment if enabled
                         AlignmentHelper.ApplyAlignment(textView, serviceProvider, alignService, checkFormatOnSave: true);

@@ -13,6 +13,37 @@ namespace CodeFormatter
     /// </summary>
     public class AlignService
     {
+        // Default maximum file size to process (1MB) to prevent performance issues
+        private const int DefaultMaxFileSizeBytes = 1024 * 1024;
+
+        private readonly int maxFileSizeBytes;
+        private readonly int maxAlignmentGap;
+        private readonly int constructorParameterThreshold;
+        private readonly int methodParameterThreshold;
+
+        /// <summary>
+        /// Initializes a new instance of AlignService with default settings
+        /// </summary>
+        public AlignService() 
+            : this(DefaultMaxFileSizeBytes, 50, 3, 4)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of AlignService with custom settings
+        /// </summary>
+        /// <param name="maxFileSizeBytes">Maximum file size to process</param>
+        /// <param name="maxAlignmentGap">Maximum alignment gap in spaces (0 for unlimited)</param>
+        /// <param name="constructorParameterThreshold">Constructor parameter threshold</param>
+        /// <param name="methodParameterThreshold">Method parameter threshold</param>
+        public AlignService(int maxFileSizeBytes, int maxAlignmentGap, int constructorParameterThreshold, int methodParameterThreshold)
+        {
+            this.maxFileSizeBytes = maxFileSizeBytes > 0 ? maxFileSizeBytes : DefaultMaxFileSizeBytes;
+            this.maxAlignmentGap = maxAlignmentGap >= 0 ? maxAlignmentGap : 0; // 0 means unlimited
+            this.constructorParameterThreshold = Math.Max(2, constructorParameterThreshold);
+            this.methodParameterThreshold = Math.Max(2, methodParameterThreshold);
+        }
+
         /// <summary>
         /// Formats the given code with alignment
         /// </summary>
@@ -20,6 +51,15 @@ namespace CodeFormatter
         {
             if (string.IsNullOrEmpty(code))
                 return code;
+
+            // Check file size limit to prevent performance issues
+            // Compare actual byte count instead of character count
+            int codeByteCount = Encoding.UTF8.GetByteCount(code);
+            if (codeByteCount > maxFileSizeBytes)
+            {
+                Logger.LogDebug("AlignService", $"File too large for alignment formatting ({codeByteCount} bytes, max {maxFileSizeBytes})");
+                return code;
+            }
 
             try
             {
@@ -51,7 +91,7 @@ namespace CodeFormatter
         /// </summary>
         private SyntaxNode AlignParameters(SyntaxNode root)
         {
-            var rewriter = new ParameterAlignmentRewriter();
+            var rewriter = new ParameterAlignmentRewriter(constructorParameterThreshold, methodParameterThreshold);
             return rewriter.Visit(root);
         }
 
@@ -60,7 +100,7 @@ namespace CodeFormatter
         /// </summary>
         private SyntaxNode AlignAssignments(SyntaxNode root)
         {
-            var rewriter = new AssignmentAlignmentRewriter();
+            var rewriter = new AssignmentAlignmentRewriter(maxAlignmentGap);
             return rewriter.Visit(root);
         }
 
@@ -69,10 +109,19 @@ namespace CodeFormatter
         /// </summary>
         private class ParameterAlignmentRewriter : CSharpSyntaxRewriter
         {
+            private readonly int constructorThreshold;
+            private readonly int methodThreshold;
+
+            public ParameterAlignmentRewriter(int constructorThreshold, int methodThreshold)
+            {
+                this.constructorThreshold = constructorThreshold;
+                this.methodThreshold = methodThreshold;
+            }
+
             public override SyntaxNode VisitMethodDeclaration(MethodDeclarationSyntax node)
             {
-                // Align parameters if more than 3
-                if (node.ParameterList.Parameters.Count > 3)
+                // Align parameters if greater than or equal to threshold
+                if (node.ParameterList.Parameters.Count >= methodThreshold)
                 {
                     var indentation = DetectIndentation(node);
                     var newParameterList = FormatParameterList(node.ParameterList, indentation);
@@ -84,8 +133,8 @@ namespace CodeFormatter
 
             public override SyntaxNode VisitConstructorDeclaration(ConstructorDeclarationSyntax node)
             {
-                // Align parameters if more than 2
-                if (node.ParameterList.Parameters.Count > 2)
+                // Align parameters if greater than or equal to threshold
+                if (node.ParameterList.Parameters.Count >= constructorThreshold)
                 {
                     var indentation = DetectIndentation(node);
                     var newParameterList = FormatParameterList(node.ParameterList, indentation);
@@ -98,7 +147,7 @@ namespace CodeFormatter
             public override SyntaxNode VisitClassDeclaration(ClassDeclarationSyntax node)
             {
                 // Handle primary constructors (C# 12+)
-                if (node.ParameterList != null && node.ParameterList.Parameters.Count > 2)
+                if (node.ParameterList != null && node.ParameterList.Parameters.Count >= constructorThreshold)
                 {
                     var indentation = DetectIndentation(node);
                     var newParameterList = FormatParameterList(node.ParameterList, indentation);
@@ -111,7 +160,7 @@ namespace CodeFormatter
             public override SyntaxNode VisitRecordDeclaration(RecordDeclarationSyntax node)
             {
                 // Handle record primary constructors
-                if (node.ParameterList != null && node.ParameterList.Parameters.Count > 2)
+                if (node.ParameterList != null && node.ParameterList.Parameters.Count >= constructorThreshold)
                 {
                     var indentation = DetectIndentation(node);
                     var newParameterList = FormatParameterList(node.ParameterList, indentation);
@@ -124,7 +173,7 @@ namespace CodeFormatter
             public override SyntaxNode VisitStructDeclaration(StructDeclarationSyntax node)
             {
                 // Handle struct primary constructors
-                if (node.ParameterList != null && node.ParameterList.Parameters.Count > 2)
+                if (node.ParameterList != null && node.ParameterList.Parameters.Count >= constructorThreshold)
                 {
                     var indentation = DetectIndentation(node);
                     var newParameterList = FormatParameterList(node.ParameterList, indentation);
@@ -218,8 +267,11 @@ namespace CodeFormatter
         /// </summary>
         private class AssignmentAlignmentRewriter : CSharpSyntaxRewriter
         {
-            public AssignmentAlignmentRewriter()
+            private readonly int maxAlignmentGap;
+
+            public AssignmentAlignmentRewriter(int maxAlignmentGap)
             {
+                this.maxAlignmentGap = maxAlignmentGap;
             }
 
             // Handle local variables in blocks
@@ -408,6 +460,17 @@ namespace CodeFormatter
                 
                 var maxTypePos = typePositions.Max();
 
+                // Apply max alignment gap constraint if configured
+                if (maxAlignmentGap > 0)
+                {
+                    var minTypePos = typePositions.Min();
+                    if (maxTypePos - minTypePos > maxAlignmentGap)
+                    {
+                        Logger.LogDebug("AlignService", $"Type alignment gap ({maxTypePos - minTypePos}) exceeds maximum ({maxAlignmentGap}), skipping field group");
+                        return new List<MemberDeclarationSyntax>(fields);
+                    }
+                }
+
                 // Calculate variable positions AFTER type alignment
                 // Each variable position needs to account for the aligned type position
                 var varPositions = new List<int>();
@@ -477,6 +540,17 @@ namespace CodeFormatter
                     return statements;
                 
                 var maxTypePos = typePositions.Max();
+
+                // Apply max alignment gap constraint if configured
+                if (maxAlignmentGap > 0)
+                {
+                    var minTypePos = typePositions.Min();
+                    if (maxTypePos - minTypePos > maxAlignmentGap)
+                    {
+                        Logger.LogDebug("AlignService", $"Type alignment gap ({maxTypePos - minTypePos}) exceeds maximum ({maxAlignmentGap}), skipping statement group");
+                        return statements;
+                    }
+                }
 
                 // Calculate variable positions AFTER type alignment
                 var varPositions = new List<int>();
