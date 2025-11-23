@@ -30,12 +30,12 @@ namespace CodeFormatter
 
         [Category("Alignment")]
         [DisplayName("Constructor Parameter Threshold")]
-        [Description("Minimum number of constructor parameters to trigger alignment (default: 3)")]
+        [Description("Align constructor parameters when count is greater than or equal to this threshold (default: 3)")]
         public int ConstructorParameterThreshold { get; set; } = 3;
 
         [Category("Alignment")]
         [DisplayName("Method Parameter Threshold")]
-        [Description("Minimum number of method parameters to trigger alignment (default: 4)")]
+        [Description("Align method parameters when count is greater than or equal to this threshold (default: 4)")]
         public int MethodParameterThreshold { get; set; } = 4;
 
         [Category("Performance")]

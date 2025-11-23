@@ -53,9 +53,11 @@ namespace CodeFormatter
                 return code;
 
             // Check file size limit to prevent performance issues
-            if (code.Length > maxFileSizeBytes)
+            // Compare actual byte count instead of character count
+            int codeByteCount = Encoding.UTF8.GetByteCount(code);
+            if (codeByteCount > maxFileSizeBytes)
             {
-                Logger.LogDebug("AlignService", $"File too large for alignment formatting ({code.Length} bytes, max {maxFileSizeBytes})");
+                Logger.LogDebug("AlignService", $"File too large for alignment formatting ({codeByteCount} bytes, max {maxFileSizeBytes})");
                 return code;
             }
 
@@ -118,8 +120,8 @@ namespace CodeFormatter
 
             public override SyntaxNode VisitMethodDeclaration(MethodDeclarationSyntax node)
             {
-                // Align parameters if more than threshold
-                if (node.ParameterList.Parameters.Count > methodThreshold)
+                // Align parameters if greater than or equal to threshold
+                if (node.ParameterList.Parameters.Count >= methodThreshold)
                 {
                     var indentation = DetectIndentation(node);
                     var newParameterList = FormatParameterList(node.ParameterList, indentation);
@@ -131,8 +133,8 @@ namespace CodeFormatter
 
             public override SyntaxNode VisitConstructorDeclaration(ConstructorDeclarationSyntax node)
             {
-                // Align parameters if more than threshold
-                if (node.ParameterList.Parameters.Count > constructorThreshold)
+                // Align parameters if greater than or equal to threshold
+                if (node.ParameterList.Parameters.Count >= constructorThreshold)
                 {
                     var indentation = DetectIndentation(node);
                     var newParameterList = FormatParameterList(node.ParameterList, indentation);
@@ -145,7 +147,7 @@ namespace CodeFormatter
             public override SyntaxNode VisitClassDeclaration(ClassDeclarationSyntax node)
             {
                 // Handle primary constructors (C# 12+)
-                if (node.ParameterList != null && node.ParameterList.Parameters.Count > constructorThreshold)
+                if (node.ParameterList != null && node.ParameterList.Parameters.Count >= constructorThreshold)
                 {
                     var indentation = DetectIndentation(node);
                     var newParameterList = FormatParameterList(node.ParameterList, indentation);
@@ -158,7 +160,7 @@ namespace CodeFormatter
             public override SyntaxNode VisitRecordDeclaration(RecordDeclarationSyntax node)
             {
                 // Handle record primary constructors
-                if (node.ParameterList != null && node.ParameterList.Parameters.Count > constructorThreshold)
+                if (node.ParameterList != null && node.ParameterList.Parameters.Count >= constructorThreshold)
                 {
                     var indentation = DetectIndentation(node);
                     var newParameterList = FormatParameterList(node.ParameterList, indentation);
@@ -171,7 +173,7 @@ namespace CodeFormatter
             public override SyntaxNode VisitStructDeclaration(StructDeclarationSyntax node)
             {
                 // Handle struct primary constructors
-                if (node.ParameterList != null && node.ParameterList.Parameters.Count > constructorThreshold)
+                if (node.ParameterList != null && node.ParameterList.Parameters.Count >= constructorThreshold)
                 {
                     var indentation = DetectIndentation(node);
                     var newParameterList = FormatParameterList(node.ParameterList, indentation);
