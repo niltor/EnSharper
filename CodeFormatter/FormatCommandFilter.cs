@@ -13,12 +13,10 @@ namespace CodeFormatter
     /// </summary>
     internal sealed class FormatCommandFilter : IOleCommandTarget
     {
-        // Use observed command id for Format Document in this VS version
-        private const uint ECMD_FORMATDOCUMENT = 1990;
-
         private readonly IWpfTextView textView;
         private readonly SVsServiceProvider serviceProvider;
         private IOleCommandTarget nextCommandTarget;
+        internal static readonly object AlignmentAppliedKey = new object();
 
         private FormatCommandFilter(IWpfTextView textView, SVsServiceProvider serviceProvider)
         {
@@ -94,75 +92,76 @@ namespace CodeFormatter
         {
             ThreadHelper.ThrowIfNotOnUIThread();
 
-            Logger.LogError("👌 FormatCommandFilter.Exec", $"format command: pguid={pguidCmdGroup}, id={nCmdID}，execopt:{nCmdexecopt}");
-
-            // Record snapshot version before executing the command to detect real buffer changes
-            int beforeVersion = -1;
-            try
-            {
-                if (textView?.TextBuffer?.CurrentSnapshot != null)
-                    beforeVersion = textView.TextBuffer.CurrentSnapshot.Version.VersionNumber;
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError("FormatCommandFilter.Exec", $"Failed reading snapshot version before exec: {ex}");
-            }
-
             bool isFormatCommand = false;
 
-            if (pguidCmdGroup == VSConstants.VSStd2K && nCmdID == ECMD_FORMATDOCUMENT)
+            if (pguidCmdGroup == VSConstants.VSStd2K && nCmdID == (int)VSConstants.VSStd2KCmdID.FORMATDOCUMENT)
             {
                 isFormatCommand = true;
                 Logger.LogDebug("FormatCommandFilter.Exec", $"Detected format command: pguid={pguidCmdGroup}, id={nCmdID}");
             }
 
-            // Execute the original command
-            int result = VSConstants.S_OK;
-            if (nextCommandTarget != null)
+            if (isFormatCommand)
             {
+                int hr = VSConstants.S_OK;
+
+                if (nextCommandTarget != null)
+                {
+                    hr = nextCommandTarget.Exec(
+                        ref pguidCmdGroup,
+                        nCmdID,
+                        nCmdexecopt,
+                        pvaIn,
+                        pvaOut
+                    );
+                }
+                else
+                {
+                    Logger.LogDebug("FormatCommandFilter.Exec", "No next command target available; running custom alignment only");
+                }
+
                 try
                 {
-                    result = nextCommandTarget.Exec(ref pguidCmdGroup, nCmdID, nCmdexecopt, pvaIn, pvaOut);
+                    ApplyAlignment(alignOnly: true);
+                    Logger.LogDebug("FormatCommandFilter.Exec", "Alignment applied after default formatting");
+                    return hr;
                 }
                 catch (Exception ex)
                 {
-                    Logger.LogError("FormatCommandFilter.Exec", $"nextCommandTarget.Exec threw: {ex}");
+                    Logger.LogError("FormatCommandFilter.Exec", $"Failed to apply alignment: {ex}");
+                    return VSConstants.E_FAIL;
                 }
             }
 
-            // Check if buffer actually changed
-            int afterVersion = -1;
-            try
+            // Pass other commands through
+            if (nextCommandTarget != null)
             {
-                if (textView?.TextBuffer?.CurrentSnapshot != null)
-                    afterVersion = textView.TextBuffer.CurrentSnapshot.Version.VersionNumber;
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError("FormatCommandFilter.Exec", $"Failed reading snapshot version after exec: {ex}");
-            }
-
-            bool bufferChanged = beforeVersion != -1 && afterVersion != -1 && beforeVersion != afterVersion;
-            Logger.LogDebug("FormatCommandFilter.Exec", $"Snapshot versions: before={beforeVersion}, after={afterVersion}, changed={bufferChanged}");
-
-            if (isFormatCommand && bufferChanged)
-            {
-                ApplyAlignment();
+                return nextCommandTarget.Exec(
+                    ref pguidCmdGroup,
+                    nCmdID,
+                    nCmdexecopt,
+                    pvaIn,
+                    pvaOut
+                );
             }
 
-            return result;
+            return VSConstants.E_FAIL;
         }
 
-        private void ApplyAlignment()
+        private void ApplyAlignment(bool alignOnly)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
 
             try
             {
                 Logger.LogDebug("FormatCommandFilter.ApplyAlignment", "Calling AlignmentHelper.ApplyAlignment");
+                
+                // Create AlignService with current options (reads latest configuration)
                 var alignService = AlignServiceFactory.CreateFromOptions(serviceProvider);
-                AlignmentHelper.ApplyAlignment(textView, serviceProvider, alignService, checkFormatOnSave: false);
+                
+                AlignmentHelper.ApplyAlignment(textView, serviceProvider, alignService, checkFormatOnSave: false, alignOnly: alignOnly);
                 Logger.LogDebug("FormatCommandFilter.ApplyAlignment", "Alignment applied successfully via format command");
+
+                textView.Properties[AlignmentAppliedKey] = true;
             }
             catch (Exception ex)
             {

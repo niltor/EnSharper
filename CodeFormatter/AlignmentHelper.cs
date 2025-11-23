@@ -21,11 +21,13 @@ namespace CodeFormatter
         /// <param name="serviceProvider">The service provider</param>
         /// <param name="alignService">The alignment service</param>
         /// <param name="checkFormatOnSave">Whether to check the FormatOnSave option (for save events)</param>
+        /// <param name="alignOnly">If true, only run the custom alignment processors (assumes IDE formatting already ran)</param>
         public static void ApplyAlignment(
             IWpfTextView textView,
             SVsServiceProvider serviceProvider,
             AlignService alignService,
-            bool checkFormatOnSave = false)
+            bool checkFormatOnSave = false,
+            bool alignOnly = false)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
 
@@ -65,20 +67,22 @@ namespace CodeFormatter
                     if (checkFormatOnSave && !options.FormatOnSave)
                         return;
 
-                    // Save cursor position before formatting
-                    // We use line number and column offset which is simple and works well for alignment changes
-                    // that preserve line structure. More complex tracking would be needed for refactorings
-                    // that move code across lines, but that's not the case for alignment.
+                    // Save cursor position and viewport scroll position before formatting
                     var caretPosition = textView.Caret.Position.BufferPosition;
                     var caretLine = caretPosition.GetContainingLine().LineNumber;
                     var caretColumn = caretPosition.Position - caretPosition.GetContainingLine().Start.Position;
+
+                    // Save viewport top line to restore scroll position
+                    var viewportTop = textView.TextViewLines.FirstVisibleLine.Start;
+                    var topLine = viewportTop.GetContainingLine().LineNumber;
+                    var topLineOffset = viewportTop.Position - viewportTop.GetContainingLine().Start.Position;
 
                     // Get the current snapshot and text
                     var snapshot = textView.TextBuffer.CurrentSnapshot;
                     var text = snapshot.GetText();
 
-                    // Format the code (sorting removed)
-                    var formattedText = alignService.FormatCode(text);
+                    // Format the code (Roslyn formatting + optional alignment)
+                    var formattedText = alignOnly ? alignService.ApplyAlignmentOnly(text) : alignService.FormatCode(text);
 
                     // Only apply changes if text actually changed
                     if (formattedText != text)
@@ -93,8 +97,6 @@ namespace CodeFormatter
                             var newSnapshot = edit.Apply();
 
                             // Restore cursor position
-                            // Note: When sorting is enabled, we try to find the original line content
-                            // If the line moved, we restore to the new position. Otherwise, use line number.
                             try
                             {
                                 // Get the original caret line content before formatting
@@ -105,7 +107,6 @@ namespace CodeFormatter
                                 if (newSnapshot != null)
                                 {
                                     // Optimize search: check original position first, then search nearby lines
-                                    // Most formatting operations don't move lines far
                                     int searchStart = Math.Max(0, caretLine - CursorSearchRange);
                                     int searchEnd = Math.Min(newSnapshot.LineCount, caretLine + CursorSearchRange);
                                     
@@ -147,12 +148,23 @@ namespace CodeFormatter
                                         var newPosition = Math.Min(newLine.Start.Position + caretColumn, newLine.End.Position);
                                         textView.Caret.MoveTo(new Microsoft.VisualStudio.Text.SnapshotPoint(newSnapshot, newPosition));
                                     }
+
+                                    // Restore viewport scroll position
+                                    if (topLine < newSnapshot.LineCount)
+                                    {
+                                        var newTopLine = newSnapshot.GetLineFromLineNumber(topLine);
+                                        var newTopPosition = Math.Min(newTopLine.Start.Position + topLineOffset, newTopLine.End.Position);
+                                        var newTopPoint = new Microsoft.VisualStudio.Text.SnapshotPoint(newSnapshot, newTopPosition);
+                                        
+                                        // DisplayTextLineContainingBufferPosition ensures the line is visible and sets scroll
+                                        textView.DisplayTextLineContainingBufferPosition(newTopPoint, 0, ViewRelativePosition.Top);
+                                    }
                                 }
                             }
                             catch (Exception ex)
                             {
-                                // If cursor restoration fails, log but don't crash
-                                System.Diagnostics.Debug.WriteLine($"Failed to restore cursor position: {ex.Message}");
+                                // If cursor/viewport restoration fails, log but don't crash
+                                System.Diagnostics.Debug.WriteLine($"Failed to restore cursor/viewport position: {ex.Message}");
                             }
                         }
                         else

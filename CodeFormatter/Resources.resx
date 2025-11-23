@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="OptionsCategoryName" xml:space="preserve">
+    <value>Code Align</value>
+  </data>
+  <data name="CategoryGeneral" xml:space="preserve">
+    <value>General</value>
+  </data>
+  <data name="CategoryAlignment" xml:space="preserve">
+    <value>Alignment</value>
+  </data>
+  <data name="CategoryParameters" xml:space="preserve">
+    <value>Parameters</value>
+  </data>
+  <data name="EnablePluginDisplayName" xml:space="preserve">
+    <value>Enable Plugin</value>
+  </data>
+  <data name="EnablePluginDescription" xml:space="preserve">
+    <value>Controls whether the plugin is active</value>
+  </data>
+  <data name="FormatOnSaveDisplayName" xml:space="preserve">
+    <value>Format On Save</value>
+  </data>
+  <data name="FormatOnSaveDescription" xml:space="preserve">
+    <value>Automatically apply alignment formatting when saving files</value>
+  </data>
+  <data name="MaxAlignmentGapDisplayName" xml:space="preserve">
+    <value>Max Alignment Gap</value>
+  </data>
+  <data name="MaxAlignmentGapDescription" xml:space="preserve">
+    <value>Maximum number of spaces to add for alignment. Prevents excessive spacing when variable names differ greatly in length.</value>
+  </data>
+  <data name="MaxFileSizeDisplayName" xml:space="preserve">
+    <value>Max File Size (bytes)</value>
+  </data>
+  <data name="MaxFileSizeDescription" xml:space="preserve">
+    <value>Maximum file size to process. Files larger than this will not be formatted.</value>
+  </data>
+  <data name="ConstructorThresholdDisplayName" xml:space="preserve">
+    <value>Constructor Parameter Threshold</value>
+  </data>
+  <data name="ConstructorThresholdDescription" xml:space="preserve">
+    <value>Minimum number of constructor parameters required before aligning them on separate lines.</value>
+  </data>
+  <data name="MethodThresholdDisplayName" xml:space="preserve">
+    <value>Method Parameter Threshold</value>
+  </data>
+  <data name="MethodThresholdDescription" xml:space="preserve">
+    <value>Minimum number of method parameters required before aligning them on separate lines.</value>
+  </data>
+</root>

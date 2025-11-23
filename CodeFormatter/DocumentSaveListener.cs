@@ -162,10 +162,10 @@ namespace CodeFormatter
 
                         // Apply alignment if enabled
                         AlignmentHelper.ApplyAlignment(textView, serviceProvider, alignService, checkFormatOnSave: true);
-                        
+
                         // Remember the formatted text
                         lastFormattedText = textBuffer.CurrentSnapshot.GetText();
-                        
+
                         System.Diagnostics.Debug.WriteLine("DocumentSaveListener: Format applied on save");
                     }
                 }

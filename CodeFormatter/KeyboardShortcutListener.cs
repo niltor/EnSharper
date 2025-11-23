@@ -1,5 +1,4 @@
 using System;
-using System.Threading.Tasks;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
@@ -12,13 +11,14 @@ namespace CodeFormatter
     /// </summary>
     /// <remarks>
     /// This class subscribes to DTE CommandEvents to detect when the user triggers Format Document
-    /// via keyboard shortcuts, then applies alignment formatting after a configurable delay.
+    /// via keyboard shortcuts, then cancels the default command and applies Roslyn + custom alignment.
     /// </remarks>
     internal sealed class KeyboardShortcutListener : IDisposable
     {
         private readonly IWpfTextView textView;
         private readonly SVsServiceProvider serviceProvider;
         private EnvDTE.CommandEvents commandEvents;
+        private bool isProcessing;
 
         /// <summary>
         /// Initializes a new instance of the KeyboardShortcutListener class
@@ -39,6 +39,7 @@ namespace CodeFormatter
         /// </summary>
         private void TryAttachToFormatCommand()
         {
+            ThreadHelper.ThrowIfNotOnUIThread();
             try
             {
                 var dte = serviceProvider.GetService(typeof(EnvDTE.DTE)) as EnvDTE.DTE;
@@ -55,18 +56,19 @@ namespace CodeFormatter
                     return;
                 }
 
-                // Only attach if the command has key bindings (so we approximate keyboard-trigger intent)
+                // Only attach if the command has key bindings
                 if (cmd.Bindings == null)
                 {
                     Logger.LogDebug("KeyboardShortcutListener", "Edit.FormatDocument has no bindings; listener will not attach");
                     return;
                 }
 
-                // Subscribe to AfterExecute for this specific command
+                // Subscribe to BeforeExecute/AfterExecute to intercept the command
                 commandEvents = dte.Events.get_CommandEvents(cmd.Guid, cmd.ID);
+                commandEvents.BeforeExecute += OnBeforeExecute;
                 commandEvents.AfterExecute += OnAfterExecute;
 
-                Logger.LogDebug("KeyboardShortcutListener", "Attached to Edit.FormatDocument CommandEvents.AfterExecute");
+                Logger.LogDebug("KeyboardShortcutListener", "Attached to Edit.FormatDocument CommandEvents.BeforeExecute/AfterExecute");
             }
             catch (Exception ex)
             {
@@ -75,86 +77,66 @@ namespace CodeFormatter
         }
 
         /// <summary>
-        /// Event handler called after the Format Document command executes
+        /// Event handler called before the Format Document command executes
         /// </summary>
-        /// <param name="guid">The command GUID</param>
-        /// <param name="id">The command ID</param>
-        /// <param name="customIn">Custom input parameter</param>
-        /// <param name="customOut">Custom output parameter</param>
+        private void OnBeforeExecute(string guid, int id, object customIn, object customOut, ref bool cancelDefault)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+
+            // Prevent re-entry if we're already processing
+            if (isProcessing)
+                return;
+
+            isProcessing = true;
+        }
+
         private void OnAfterExecute(string guid, int id, object customIn, object customOut)
         {
-            // This event handler is invoked on the UI thread by DTE
-            // We need to ensure we're on the UI thread for VS service access
             ThreadHelper.ThrowIfNotOnUIThread();
+
+            if (!isProcessing)
+                return;
 
             try
             {
-                // Get delay configuration while on UI thread (VSTHRD010 fix)
-                int delayMs = 100;
-                try
+                if (textView.Properties.TryGetProperty(FormatCommandFilter.AlignmentAppliedKey, out object marker))
                 {
-                    var shell = serviceProvider.GetService(typeof(SVsShell)) as IVsShell;
-                    if (shell != null)
+                    textView.Properties.RemoveProperty(FormatCommandFilter.AlignmentAppliedKey);
+                    if (marker is bool handled && handled)
                     {
-                        var packageGuid = new Guid(CodeFormatterPackage.PackageGuidString);
-                        IVsPackage pkg;
-                        if (shell.IsPackageLoaded(ref packageGuid, out pkg) == VSConstants.S_OK && pkg is CodeFormatterPackage package)
-                        {
-                            var opts = package.GetDialogPage(typeof(AlignOptions)) as AlignOptions;
-                            if (opts != null)
-                                delayMs = Math.Max(0, opts.FormatCommandDelayMs);
-                        }
+                        return;
                     }
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogError("KeyboardShortcutListener.OnAfterExecute", $"Error getting delay configuration: {ex.Message}");
                 }
 
-                // Schedule async work using JoinableTaskFactory
-                var jtf = ThreadHelper.JoinableTaskFactory;
-                _ = jtf.RunAsync(async () =>
-                {
-                    try
-                    {
-                        // Delay on background thread to avoid blocking UI
-                        await Task.Delay(delayMs).ConfigureAwait(false);
-                        
-                        // Switch back to UI thread before calling AlignmentHelper (VSTHRD010 fix)
-                        await jtf.SwitchToMainThreadAsync();
-                        
-                        // Create AlignService with configured options
-                        var alignService = AlignServiceFactory.CreateFromOptions(serviceProvider);
-                        
-                        AlignmentHelper.ApplyAlignment(textView, serviceProvider, alignService, checkFormatOnSave: false);
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.LogError("KeyboardShortcutListener.OnAfterExecute", ex.ToString());
-                    }
-                });
+                Logger.LogDebug("KeyboardShortcutListener.OnAfterExecute", "Applying alignment after Format Document command");
+
+                var alignService = AlignServiceFactory.CreateFromOptions(serviceProvider);
+                AlignmentHelper.ApplyAlignment(textView, serviceProvider, alignService, checkFormatOnSave: false, alignOnly: true);
             }
             catch (Exception ex)
             {
                 Logger.LogError("KeyboardShortcutListener.OnAfterExecute", ex.ToString());
             }
+            finally
+            {
+                isProcessing = false;
+            }
         }
 
         public void Dispose()
         {
-            // Note: COM event unsubscription can be called from any thread
-            // but we should be safe here as we're just removing a handler
+            ThreadHelper.ThrowIfNotOnUIThread();
             try
             {
                 if (commandEvents != null)
                 {
+                    commandEvents.BeforeExecute -= OnBeforeExecute;
                     commandEvents.AfterExecute -= OnAfterExecute;
                     commandEvents = null;
                 }
             }
             catch (Exception ex)
             {
-                // Log errors during cleanup, but don't throw
                 Logger.LogError("KeyboardShortcutListener.Dispose", $"Error during cleanup: {ex.Message}");
             }
         }
