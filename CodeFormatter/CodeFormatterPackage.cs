@@ -12,7 +12,7 @@ namespace CodeFormatter
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
     [ProvideAutoLoad(Microsoft.VisualStudio.Shell.Interop.UIContextGuids80.SolutionExists, PackageAutoLoadFlags.BackgroundLoad)]
     [Guid(CodeFormatterPackage.PackageGuidString)]
-    [ProvideOptionPage(typeof(AlignOptions), "Code Align", "General", 0, 0, true, SupportsProfiles = true)]
+    [ProvideOptionPage(typeof(AlignDialogPage), "Code Align", "General", 0, 0, true, SupportsProfiles = true)]
     public sealed class CodeFormatterPackage : AsyncPackage
     {
         /// <summary>
@@ -28,7 +28,21 @@ namespace CodeFormatter
         /// </summary>
         protected override async Task InitializeAsync(CancellationToken cancellationToken, IProgress<ServiceProgressData> progress)
         {
+            // Switch to UI thread for VS services
             await this.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
+
+            try
+            {
+                await Logger.InitializeAsync(this);
+
+                Logger.LogInfo(nameof(CodeFormatterPackage), $"Package initialized.");
+            }
+            catch (Exception ex)
+            {
+                // Fallback to debug output if logger fails
+                System.Diagnostics.Debug.WriteLine($"[CodeFormatterPackage] Initialization error: {ex}");
+                ActivityLog.LogError("CodeFormatterPackage", $"Initialization error: {ex}");
+            }
         }
 
         #endregion

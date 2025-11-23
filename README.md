@@ -144,6 +144,9 @@ The extension integrates seamlessly with Visual Studio's formatting features:
 
 The cursor position is preserved during formatting, ensuring a smooth editing experience.
 
+### Logging
+Diagnostics now appear in the **Code Align** output pane (created automatically when the package loads) and in the Visual Studio Activity Log; there is no longer any local log file to track.
+
 ### Format On Save
 
 When **Format On Save** is enabled in the options:
@@ -179,6 +182,30 @@ The alignment is applied after the standard Visual Studio formatting, ensuring c
 2. Open the solution in Visual Studio 2022
 3. Build the solution
 4. The VSIX package will be generated in the `bin` folder
+
+> **Note:** Building with `dotnet build` outside of Visual Studio is not supported because the project depends on Visual Studio SDK assemblies that are resolved only inside the IDE or a VS developer command prompt. Use the full VS 2022 environment to restore, build, and deploy the extension.
+
+## Extending Alignment Features
+
+### Project Structure
+
+The codebase is organized into logical layers:
+
+- **`Configuration/`** - Options pages (`AlignOptions`), settings models (`AlignmentSettings`), and service factory
+- **`Formatting/`** - Core formatting service (`AlignService`) and coordinator (`FormattingCoordinator`)
+- **`Processors/`** - Roslyn syntax rewriters for alignment logic (parameter, argument, assignment alignment)
+- **`Listeners/`** - VS event handlers (save, format command, keyboard shortcuts, text view creation)
+
+### Adding New Alignment Features
+
+1. Create a new processor class in `Processors/` that implements `IAlignmentProcessor` (see `ArgumentAlignmentProcessor` for reference)
+2. Keep the processor focused on Roslyn syntax transformations - no VS service dependencies
+3. Register your processor in `AlignService.CreateDefaultProcessors()` (in `Formatting/AlignService.cs`)
+4. If configuration is needed:
+   - Add properties to `AlignOptions` (in `Configuration/`)
+   - Update `AlignmentSettings` to include the new values
+   - Pass settings through `AlignServiceFactory`
+5. Test by building in Visual Studio and using the Format Document command or saving a `.cs` file
 
 ## License
 

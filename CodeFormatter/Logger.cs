@@ -1,165 +1,143 @@
-using System;
-using System.IO;
-using System.Text;
+﻿using System;
+using System.Diagnostics;
+using System.Threading.Tasks;
 using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Shell.Interop;
 
 namespace CodeFormatter
 {
     /// <summary>
-    /// Provides logging functionality for the CodeFormatter extension
+    /// Provides logging that writes to the VS Output window pane and ActivityLog.
     /// </summary>
-    /// <remarks>
-    /// This logger writes to both the Visual Studio ActivityLog and a local file.
-    /// It handles thread-safety automatically, using JTF when necessary.
-    /// </remarks>
     internal static class Logger
     {
-        private static readonly object sync = new object();
-        private static readonly string logPath = Path.Combine(Path.GetTempPath(), "CodeFormatter.log");
+        private static readonly Guid OutputPaneGuid = new Guid("F81EB4E0-A886-4EC0-9C85-3C7B5B9C6C9A");
+        private const string PaneTitle = "Code Align";
+        private static IVsOutputWindowPane outputPane;
+        private static bool initializationAttempted = false;
 
-        /// <summary>
-        /// Logs an informational message to both ActivityLog and file
-        /// </summary>
-        /// <param name="source">The source component generating the log</param>
-        /// <param name="message">The message to log</param>
+        public static async Task InitializeAsync(IServiceProvider serviceProvider)
+        {
+            if (serviceProvider == null)
+                throw new ArgumentNullException(nameof(serviceProvider));
+
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            
+            if (initializationAttempted)
+            {
+                Debug.WriteLine($"[Logger] Initialization already attempted. outputPane is {(outputPane == null ? "null" : "available")}");
+                return;
+            }
+
+            initializationAttempted = true;
+
+            try
+            {
+                var outputWindow = serviceProvider.GetService(typeof(SVsOutputWindow)) as IVsOutputWindow;
+                if (outputWindow == null)
+                {
+                    Debug.WriteLine("[Logger] Failed to get SVsOutputWindow service");
+                    return;
+                }
+
+                // Use local variable for ref parameter
+                Guid paneGuid = OutputPaneGuid;
+                
+                // Try to get existing pane first
+                int hr = outputWindow.GetPane(ref paneGuid, out outputPane);
+                
+                if (hr != 0 || outputPane == null)
+                {
+                    // Create new pane
+                    paneGuid = OutputPaneGuid;
+                    hr = outputWindow.CreatePane(ref paneGuid, PaneTitle, fInitVisible: 1, fClearWithSolution: 0);
+                    if (hr != 0)
+                    {
+                        Debug.WriteLine($"[Logger] Failed to create output pane. HRESULT: {hr}");
+                        return;
+                    }
+
+                    // Get the newly created pane
+                    paneGuid = OutputPaneGuid;
+                    hr = outputWindow.GetPane(ref paneGuid, out outputPane);
+                    if (hr != 0 || outputPane == null)
+                    {
+                        Debug.WriteLine($"[Logger] Failed to get output pane after creation. HRESULT: {hr}");
+                        return;
+                    }
+                }
+
+                // Activate the pane to make it visible
+                outputPane?.Activate();
+                
+                Debug.WriteLine("[Logger] Successfully initialized output pane");
+                LogInfo("Logger", "Code Align logger initialized successfully");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[Logger] Exception during initialization: {ex}");
+            }
+        }
+
         public static void LogInfo(string source, string message)
-        {
-            // File logging doesn't require UI thread
-            try
-            {
-                System.Diagnostics.Debug.WriteLine($"[Info] {source}: {message}");
-                lock (sync)
-                {
-                    File.AppendAllText(logPath, $"{DateTime.Now:O} [Info] {source}: {message}{Environment.NewLine}", Encoding.UTF8);
-                }
-            }
-            catch
-            {
-                // swallow file IO errors
-            }
+            => LogInternal(LogLevel.Info, source, message);
 
-            // ActivityLog requires UI thread - use JTF for thread-safe access
-            if (ThreadHelper.CheckAccess())
-            {
-                try
-                {
-                    ActivityLog.LogInformation(source, message);
-                }
-                catch
-                {
-                    // ignore activity log errors
-                }
-            }
-            else
-            {
-                // If not on UI thread, schedule ActivityLog call on UI thread
-                // Using fire-and-forget pattern - exceptions are caught inside the async lambda
-                try
-                {
-                    _ = ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
-                    {
-                        try
-                        {
-                            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-                            ActivityLog.LogInformation(source, message);
-                        }
-                        catch
-                        {
-                            // ignore activity log errors
-                        }
-                    });
-                }
-                catch
-                {
-                    // If even starting the async operation fails, log to debug only
-                    System.Diagnostics.Debug.WriteLine($"Failed to queue ActivityLog.LogInformation for: {source}");
-                }
-            }
-        }
-
-        /// <summary>
-        /// Logs an error message to both ActivityLog and file
-        /// </summary>
-        /// <param name="source">The source component generating the log</param>
-        /// <param name="message">The error message to log</param>
         public static void LogError(string source, string message)
-        {
-            // File logging doesn't require UI thread
-            try
-            {
-                System.Diagnostics.Debug.WriteLine($"[Error] {source}: {message}");
-                lock (sync)
-                {
-                    File.AppendAllText(logPath, $"{DateTime.Now:O} [Error] {source}: {message}{Environment.NewLine}", Encoding.UTF8);
-                }
-            }
-            catch
-            {
-                // swallow file IO errors
-            }
+            => LogInternal(LogLevel.Error, source, message);
 
-            // ActivityLog requires UI thread - use JTF for thread-safe access
-            if (ThreadHelper.CheckAccess())
-            {
-                try
-                {
-                    ActivityLog.LogError(source, message);
-                }
-                catch
-                {
-                    // ignore activity log errors
-                }
-            }
-            else
-            {
-                // If not on UI thread, schedule ActivityLog call on UI thread
-                // Using fire-and-forget pattern - exceptions are caught inside the async lambda
-                try
-                {
-                    _ = ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
-                    {
-                        try
-                        {
-                            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-                            ActivityLog.LogError(source, message);
-                        }
-                        catch
-                        {
-                            // ignore activity log errors
-                        }
-                    });
-                }
-                catch
-                {
-                    // If even starting the async operation fails, log to debug only
-                    System.Diagnostics.Debug.WriteLine($"Failed to queue ActivityLog.LogError for: {source}");
-                }
-            }
-        }
-
-        /// <summary>
-        /// Logs a debug message to Debug output and file
-        /// </summary>
-        /// <param name="source">The source component generating the log</param>
-        /// <param name="message">The debug message to log</param>
         public static void LogDebug(string source, string message)
+            => LogInternal(LogLevel.Debug, source, message);
+
+        private static void LogInternal(LogLevel level, string source, string message)
         {
+            var timestamp = DateTime.Now.ToString("HH:mm:ss");
+            var prefix = "[Debug]";
+            switch (level)
+            {
+                case LogLevel.Info:
+                    prefix = "[Info]";
+                    break;
+                case LogLevel.Error:
+                    prefix = "❌ [Error]";
+                    break;
+            }
+
+            var formatted = $"{timestamp} {prefix} {source}: {message}";
+
+            // Always write to Debug output (visible in debugger)
+            Debug.WriteLine(formatted);
+
+            // Write to Output pane (visible to users)
+            WriteToOutputPane(formatted);
+        }
+
+        private static void WriteToOutputPane(string text)
+        {
+            if (outputPane == null)
+            {
+                // Output pane not available yet - only debug output will work
+                return;
+            }
+
             try
             {
-                System.Diagnostics.Debug.WriteLine($"[Debug] {source}: {message}");
-                lock (sync)
+                ThreadHelper.JoinableTaskFactory.Run(async () =>
                 {
-                    File.AppendAllText(logPath, $"{DateTime.Now:O} [Debug] {source}: {message}{Environment.NewLine}", Encoding.UTF8);
-                }
+                    await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                    outputPane.OutputStringThreadSafe(text + Environment.NewLine);
+                });
             }
-            catch
+            catch (Exception ex)
             {
+                Debug.WriteLine($"[Logger] Error writing to output pane: {ex.Message}");
             }
         }
 
-        /// <summary>
-        /// Gets the path to the log file
-        /// </summary>
-        public static string LogFilePath => logPath;
+        private enum LogLevel
+        {
+            Debug,
+            Info,
+            Error
+        }
     }
 }

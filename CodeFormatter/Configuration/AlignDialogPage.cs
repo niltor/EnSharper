@@ -9,7 +9,7 @@ namespace CodeFormatter
     /// </summary>
     [ClassInterface(ClassInterfaceType.AutoDual)]
     [ComVisible(true)]
-    public class AlignOptions : DialogPage
+    public class AlignDialogPage : DialogPage
     {
         [LocCategory("CategoryGeneral")]
         [LocDisplayName("EnablePluginDisplayName")]
@@ -40,6 +40,12 @@ namespace CodeFormatter
         [LocDisplayName("MethodThresholdDisplayName")]
         [LocDescription("MethodThresholdDescription")]
         public int MethodParameterThreshold { get; set; } = 4;
+
+        protected override void OnApply(PageApplyEventArgs e)
+        {
+            base.OnApply(e);
+        }
+        
     }
 
     /// <summary>
