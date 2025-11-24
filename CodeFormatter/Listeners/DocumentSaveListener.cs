@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
@@ -20,7 +21,8 @@ namespace CodeFormatter
         private uint rdtCookie;
         private IVsRunningDocumentTable rdt;
         private bool isFormatting = false;
-        private string lastFormattedText = string.Empty;
+        private readonly Dictionary<string, string> lastFormattedContentByPath =
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
 
         private DocumentSaveListener(SVsServiceProvider serviceProvider)
@@ -38,7 +40,7 @@ namespace CodeFormatter
                 {
                     instance = new DocumentSaveListener(serviceProvider);
                     instance.Initialize();
-                    Logger.LogDebug("GlobalDocumentSaveListener", "Global instance created");
+                    Logger.LogDebug("DocumentSaveListener", "Global instance created");
                 }
                 return instance;
             }
@@ -54,7 +56,7 @@ namespace CodeFormatter
                 if (svc == null)
                 {
                     Logger.LogDebug(
-                        "GlobalDocumentSaveListener",
+                        "DocumentSaveListener",
                         "SVsRunningDocumentTable service not available"
                     );
                     return;
@@ -67,29 +69,34 @@ namespace CodeFormatter
                     if (hr != VSConstants.S_OK)
                     {
                         Logger.LogDebug(
-                            "GlobalDocumentSaveListener",
+                            "DocumentSaveListener",
                             $"Failed to advise RDT events. HRESULT: {hr}"
                         );
                         rdtCookie = 0;
                     }
                     else
                     {
-                        Logger.LogDebug("GlobalDocumentSaveListener", "Subscribed to RDT events");
+                        Logger.LogDebug("DocumentSaveListener", "Subscribed to RDT events");
                     }
                 }
             }
             catch (Exception ex)
             {
-                Logger.LogError("GlobalDocumentSaveListener.Initialize", ex.ToString());
+                Logger.LogError("DocumentSaveListener.Initialize", ex.ToString());
             }
         }
 
+        /// <summary>
+        /// when enable code clean on save, ide formatter is called before this
+        /// </summary>
+        /// <param name="docCookie"></param>
+        /// <returns></returns>
         public int OnBeforeSave(uint docCookie)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             if (isFormatting)
             {
-                Logger.LogDebug("GlobalDocumentSaveListener", "Skipping - already formatting");
+                Logger.LogDebug("DocumentSaveListener", "Skipping - already formatting");
                 return VSConstants.S_OK;
             }
 
@@ -129,7 +136,7 @@ namespace CodeFormatter
                     }
 
                     Logger.LogDebug(
-                        "GlobalDocumentSaveListener",
+                        "DocumentSaveListener",
                         $"OnBeforeSave for {documentPath}"
                     );
 
@@ -137,7 +144,7 @@ namespace CodeFormatter
                     if (textView == null)
                     {
                         Logger.LogDebug(
-                            "GlobalDocumentSaveListener",
+                            "DocumentSaveListener",
                             "No active text view - skipping format"
                         );
                         return VSConstants.S_OK;
@@ -158,7 +165,7 @@ namespace CodeFormatter
                     )
                     {
                         Logger.LogDebug(
-                            "GlobalDocumentSaveListener",
+                            "DocumentSaveListener",
                             "Cannot get document from active view"
                         );
                         return VSConstants.S_OK;
@@ -174,7 +181,7 @@ namespace CodeFormatter
                     )
                     {
                         Logger.LogDebug(
-                            "GlobalDocumentSaveListener",
+                            "DocumentSaveListener",
                             $"Skipping - active document ({activeDoc.FilePath}) is not the one being saved ({documentPath})"
                         );
                         return VSConstants.S_OK;
@@ -185,15 +192,14 @@ namespace CodeFormatter
                     {
                         return VSConstants.S_OK;
                     }
+                    var fileContent = System.IO.File.ReadAllText(documentPath);
 
-                    var currentText = textBuffer.CurrentSnapshot.GetText();
+                    Logger.LogDebug("DocumentSaveListener", $"Current text: {fileContent.Length}, last: {(lastFormattedContentByPath.TryGetValue(documentPath, out var lastContent) ? lastContent.Length : 0)}");
 
-                    Logger.LogDebug("DocumentSaveListener", $"Current text: {currentText.Length}, last: {lastFormattedText.Length}");
-
-                    if (lastFormattedText == currentText)
+                    if (lastFormattedContentByPath.TryGetValue(documentPath, out var lastFormattedContent) && lastFormattedContent == fileContent)
                     {
                         Logger.LogDebug(
-                            "GlobalDocumentSaveListener",
+                            "DocumentSaveListener",
                             "Text unchanged since last format - skipping"
                         );
                         return VSConstants.S_OK;
@@ -210,17 +216,17 @@ namespace CodeFormatter
                     if (formatted)
                     {
                         // Remember formatted text to skip next save if unchanged
-                        lastFormattedText = textBuffer.CurrentSnapshot.GetText();
+                        lastFormattedContentByPath[documentPath] = textBuffer.CurrentSnapshot.GetText();
                         Logger.LogDebug(
-                            "GlobalDocumentSaveListener",
+                            "DocumentSaveListener",
                             "Custom alignment applied on save"
                         );
                     }
                     else
                     {
-                        lastFormattedText = currentText;
+                        lastFormattedContentByPath[documentPath] = fileContent;
                         Logger.LogDebug(
-                            "GlobalDocumentSaveListener",
+                            "DocumentSaveListener",
                             "No alignment changes needed on save"
                         );
                     }
@@ -235,7 +241,7 @@ namespace CodeFormatter
             }
             catch (Exception ex)
             {
-                Logger.LogError("GlobalDocumentSaveListener.OnBeforeSave", ex.ToString());
+                Logger.LogError("DocumentSaveListener.OnBeforeSave", ex.ToString());
             }
             finally
             {
@@ -285,7 +291,7 @@ namespace CodeFormatter
             }
             catch (Exception ex)
             {
-                Logger.LogError("GlobalDocumentSaveListener.GetActiveTextView", ex.ToString());
+                Logger.LogError("DocumentSaveListener.GetActiveTextView", ex.ToString());
                 return null;
             }
         }
@@ -300,11 +306,11 @@ namespace CodeFormatter
                 {
                     rdt.UnadviseRunningDocTableEvents(rdtCookie);
                     rdtCookie = 0;
-                    Logger.LogDebug("GlobalDocumentSaveListener", "Unsubscribed from RDT events");
+                    Logger.LogDebug("DocumentSaveListener", "Unsubscribed from RDT events");
                 }
                 catch (Exception ex)
                 {
-                    Logger.LogError("GlobalDocumentSaveListener.Dispose", ex.ToString());
+                    Logger.LogError("DocumentSaveListener.Dispose", ex.ToString());
                 }
             }
         }
@@ -319,7 +325,7 @@ namespace CodeFormatter
         )
         {
             Logger.LogDebug(
-                "GlobalDocumentSaveListener",
+                "DocumentSaveListener",
                 "OnAfterFirstDocumentLock called - not used"
             );
             return VSConstants.S_OK;
@@ -333,7 +339,7 @@ namespace CodeFormatter
         )
         {
             Logger.LogDebug(
-                "GlobalDocumentSaveListener",
+                "DocumentSaveListener",
                 "OnBeforeLastDocumentUnlock called - not used"
             );
             return VSConstants.S_OK;
