@@ -1,9 +1,8 @@
+using System.ComponentModel.Composition;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Utilities;
-using System.ComponentModel.Composition;
-using System.Diagnostics;
 
 namespace CodeFormatter
 {
@@ -26,14 +25,20 @@ namespace CodeFormatter
             // Ensure we are on UI thread before interacting with VS services / editor
             ThreadHelper.ThrowIfNotOnUIThread();
 
-            Logger.LogDebug("TextViewCreationListener", $"TextViewCreated for {textView.GetHashCode()}");
+            Logger.LogDebug(
+                "TextViewCreationListener",
+                $"TextViewCreated for {textView.GetHashCode()}"
+            );
 
             // Initialize global listeners (singletons, only created once)
-            GlobalDocumentSaveListener.GetOrCreate(ServiceProvider);
-            GlobalKeyboardShortcutListener.GetOrCreate(ServiceProvider);
+            DocumentSaveListener.GetOrCreate(ServiceProvider);
+            DocumentFormatListener.GetOrCreate(ServiceProvider);
 
             // No cleanup needed for global listeners - they persist for the VS session
-            Logger.LogDebug("TextViewCreationListener", $"TextView {textView.GetHashCode()} initialized");
+            Logger.LogDebug(
+                "TextViewCreationListener",
+                $"TextView {textView.GetHashCode()} initialized"
+            );
         }
     }
 }

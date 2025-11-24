@@ -1,7 +1,6 @@
 using System;
-using Microsoft.VisualStudio;
+using Microsoft.CodeAnalysis;
 using Microsoft.VisualStudio.Shell;
-using Microsoft.VisualStudio.Shell.Interop;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
 
@@ -15,9 +14,19 @@ namespace CodeFormatter
         private const int CursorSearchRange = 10;
 
         /// <summary>
-        /// Formats the document with custom alignment
+        /// Formats the document with custom alignment and optionally IDE formatting.
         /// </summary>
-        public static bool TryFormat(IWpfTextView textView, SVsServiceProvider serviceProvider, AlignService alignService)
+        /// <param name="textView">The text view to format</param>
+        /// <param name="serviceProvider">VS service provider</param>
+        /// <param name="alignService">Alignment service</param>
+        /// <param name="includeIDFormatting">If true, applies IDE formatting + custom alignment in single edit.
+        /// If false, only applies custom alignment (assumes IDE already formatted).</param>
+        public static bool TryFormat(
+            IWpfTextView textView,
+            SVsServiceProvider serviceProvider,
+            AlignService alignService,
+            bool includeIDFormatting = false
+        )
         {
             ThreadHelper.ThrowIfNotOnUIThread();
 
@@ -33,42 +42,54 @@ namespace CodeFormatter
                     return false;
                 }
 
-                // FormatOnSave check removed - we only format when explicitly called
-                // (via Format Document shortcut, not on save)
-
                 var caret = textView.Caret.Position.BufferPosition;
                 var caretLine = caret.GetContainingLine().LineNumber;
                 var caretColumn = caret.Position - caret.GetContainingLine().Start.Position;
 
                 var viewportTop = textView.TextViewLines.FirstVisibleLine.Start;
                 var topLine = viewportTop.GetContainingLine().LineNumber;
-                var topLineOffset = viewportTop.Position - viewportTop.GetContainingLine().Start.Position;
+                var topLineOffset =
+                    viewportTop.Position - viewportTop.GetContainingLine().Start.Position;
 
                 var snapshot = textView.TextBuffer.CurrentSnapshot;
                 var text = snapshot.GetText();
 
                 Logger.LogDebug("FormattingCoordinator", $"Current text length: {text.Length}");
-                
-                // Always skip Roslyn formatting - we only do custom alignment
-                // The IDE's formatter (which user invokes) handles standard formatting
-                var formattedText = alignService.FormatCode(text, skipRoslynFormatting: true);
-                
+
+                // Get the workspace from the text buffer for proper formatting
+                Workspace workspace = null;
+                if (includeIDFormatting)
+                {
+                    workspace = GetWorkspaceFromTextBuffer(textView.TextBuffer, serviceProvider);
+                }
+
+                var formattedText = alignService.FormatCode(text, skipRoslynFormatting: !includeIDFormatting, workspace: workspace);
+
                 bool isEqual = formattedText == text;
-                Logger.LogDebug("FormattingCoordinator", $"Formatted text length: {formattedText.Length}, Equal: {isEqual}");
-                
+                Logger.LogDebug(
+                    "FormattingCoordinator",
+                    $"Formatted text length: {formattedText.Length}, Equal: {isEqual}"
+                );
+
                 if (isEqual)
                 {
                     Logger.LogDebug("FormattingCoordinator", "No changes needed - skipping edit");
                     return false;
                 }
 
-                Logger.LogDebug("FormattingCoordinator", "Applying text edit");
-                
+                var logMessage = includeIDFormatting
+                    ? "Applying combined IDE formatting + custom alignment in single edit"
+                    : "Applying custom alignment only";
+                Logger.LogDebug("FormattingCoordinator", logMessage);
+
                 using (var edit = textView.TextBuffer.CreateEdit())
                 {
                     if (edit.Snapshot != snapshot)
                     {
-                        Logger.LogDebug("FormattingCoordinator", "Snapshot changed before edit could be applied");
+                        Logger.LogDebug(
+                            "FormattingCoordinator",
+                            "Snapshot changed before edit could be applied"
+                        );
                         edit.Cancel();
                         return false;
                     }
@@ -77,17 +98,62 @@ namespace CodeFormatter
                     var newSnapshot = edit.Apply();
 
                     Logger.LogDebug("FormattingCoordinator", "Text edit applied successfully");
-                    
-                    RestoreCaretAndViewport(textView, snapshot, newSnapshot, caretLine, caretColumn, topLine, topLineOffset);
+
+                    RestoreCaretAndViewport(
+                        textView,
+                        snapshot,
+                        newSnapshot,
+                        caretLine,
+                        caretColumn,
+                        topLine,
+                        topLineOffset
+                    );
                 }
 
                 return true;
             }
             catch (Exception ex)
             {
-                Logger.LogError("FormattingCoordinator", ex.ToString());
+                Logger.LogError("FormattingCoordinator.TryFormat", ex.ToString());
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Attempts to get the Roslyn workspace for the current text buffer.
+        /// </summary>
+        private static Workspace GetWorkspaceFromTextBuffer(ITextBuffer textBuffer, SVsServiceProvider serviceProvider)
+        {
+            try
+            {
+                var componentModel =
+                    serviceProvider.GetService(
+                        typeof(Microsoft.VisualStudio.ComponentModelHost.SComponentModel)
+                    ) as Microsoft.VisualStudio.ComponentModelHost.IComponentModel;
+                if (componentModel == null)
+                    return null;
+
+                // Try to get workspace from the buffer properties first (most direct method)
+                if (textBuffer.Properties.TryGetProperty(typeof(Workspace), out Workspace bufferWorkspace) && bufferWorkspace != null)
+                {
+                    Logger.LogDebug("FormattingCoordinator", "Obtained Workspace from TextBuffer properties");
+                    return bufferWorkspace;
+                }
+
+                // Fallback: Get the workspace service and find the workspace containing this buffer
+                var workspaceService = componentModel.GetService<Microsoft.CodeAnalysis.Workspace>();
+                if (workspaceService != null)
+                {
+                    Logger.LogDebug("FormattingCoordinator", "Obtained Workspace from Workspace service");
+                    return workspaceService;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogDebug("FormattingCoordinator", $"Could not obtain Workspace: {ex.Message}");
+            }
+
+            return null;
         }
 
         private static void RestoreCaretAndViewport(
@@ -97,16 +163,18 @@ namespace CodeFormatter
             int caretLine,
             int caretColumn,
             int topLine,
-            int topLineOffset)
+            int topLineOffset
+        )
         {
             if (newSnapshot == null)
                 return;
 
             try
             {
-                var originalLineText = caretLine < oldSnapshot.LineCount
-                    ? oldSnapshot.GetLineFromLineNumber(caretLine).GetText()
-                    : null;
+                var originalLineText =
+                    caretLine < oldSnapshot.LineCount
+                        ? oldSnapshot.GetLineFromLineNumber(caretLine).GetText()
+                        : null;
 
                 int targetLineNumber = -1;
                 if (originalLineText != null)
@@ -114,8 +182,13 @@ namespace CodeFormatter
                     var searchStart = Math.Max(0, caretLine - CursorSearchRange);
                     var searchEnd = Math.Min(newSnapshot.LineCount, caretLine + CursorSearchRange);
 
-                    if (caretLine < newSnapshot.LineCount &&
-                        newSnapshot.GetLineFromLineNumber(caretLine).GetText().Equals(originalLineText, StringComparison.Ordinal))
+                    if (
+                        caretLine < newSnapshot.LineCount
+                        && newSnapshot
+                            .GetLineFromLineNumber(caretLine)
+                            .GetText()
+                            .Equals(originalLineText, StringComparison.Ordinal)
+                    )
                     {
                         targetLineNumber = caretLine;
                     }
@@ -123,7 +196,12 @@ namespace CodeFormatter
                     {
                         for (int i = searchStart; i < searchEnd; i++)
                         {
-                            if (newSnapshot.GetLineFromLineNumber(i).GetText().Equals(originalLineText, StringComparison.Ordinal))
+                            if (
+                                newSnapshot
+                                    .GetLineFromLineNumber(i)
+                                    .GetText()
+                                    .Equals(originalLineText, StringComparison.Ordinal)
+                            )
                             {
                                 targetLineNumber = i;
                                 break;
@@ -138,45 +216,35 @@ namespace CodeFormatter
                 if (targetLineNumber != -1)
                 {
                     var newLine = newSnapshot.GetLineFromLineNumber(targetLineNumber);
-                    var newPosition = Math.Min(newLine.Start.Position + caretColumn, newLine.End.Position);
+                    var newPosition = Math.Min(
+                        newLine.Start.Position + caretColumn,
+                        newLine.End.Position
+                    );
                     textView.Caret.MoveTo(new SnapshotPoint(newSnapshot, newPosition));
                 }
 
                 if (topLine < newSnapshot.LineCount)
                 {
                     var newTop = newSnapshot.GetLineFromLineNumber(topLine);
-                    var newTopPosition = Math.Min(newTop.Start.Position + topLineOffset, newTop.End.Position);
+                    var newTopPosition = Math.Min(
+                        newTop.Start.Position + topLineOffset,
+                        newTop.End.Position
+                    );
                     var topPoint = new SnapshotPoint(newSnapshot, newTopPosition);
-                    textView.DisplayTextLineContainingBufferPosition(topPoint, 0, ViewRelativePosition.Top);
+                    textView.DisplayTextLineContainingBufferPosition(
+                        topPoint,
+                        0,
+                        ViewRelativePosition.Top
+                    );
                 }
             }
             catch (Exception ex)
             {
-                Logger.LogDebug("FormattingCoordinator", $"Failed to restore caret/viewport: {ex.Message}");
+                Logger.LogDebug(
+                    "FormattingCoordinator",
+                    $"Failed to restore caret/viewport: {ex.Message}"
+                );
             }
-        }
-
-        private static string EscapeChar(char c)
-        {
-            switch (c)
-            {
-                case '\r': return "\\r";
-                case '\n': return "\\n";
-                case '\t': return "\\t";
-                case ' ': return "<space>";
-                default: return c.ToString();
-            }
-        }
-
-        private static string EscapeString(string s)
-        {
-            if (string.IsNullOrEmpty(s))
-                return "<empty>";
-            
-            if (s.Length > 50)
-                s = s.Substring(0, 50) + "...";
-            
-            return s.Replace("\r", "\\r").Replace("\n", "\\n").Replace("\t", "\\t");
         }
     }
 }

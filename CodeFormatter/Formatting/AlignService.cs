@@ -1,8 +1,9 @@
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Formatting;
 
 namespace CodeFormatter
 {
@@ -50,42 +51,55 @@ namespace CodeFormatter
         /// Formats the given code with Roslyn default formatting + custom alignment
         /// </summary>
         /// <param name="code">Source code to format</param>
-        /// <param name="skipRoslynFormatting">If true, skip Roslyn formatting and only apply alignment (useful when VS already formatted)</param>
-        public string FormatCode(string code, bool skipRoslynFormatting = false)
+        /// <param name="skipRoslynFormatting">If true, skip Roslyn formatting and only apply alignment (useful when VS already formatted).
+        /// If false, apply both Roslyn formatting and custom alignment in one pass.</param>
+        /// <param name="workspace">Optional workspace for proper formatting. If null, uses AdhocWorkspace.</param>
+        public string FormatCode(string code, bool skipRoslynFormatting = false, Workspace workspace = null)
         {
             if (string.IsNullOrEmpty(code))
                 return code;
             try
-            {  
+            {
                 var tree = CSharpSyntaxTree.ParseText(code);
                 var root = tree.GetRoot();
-                
-                // IMPORTANT: We should NEVER apply Roslyn formatting in a VS extension
-                // because we cannot replicate the user's .editorconfig and VS settings.
-                // The IDE's formatter is much more sophisticated and respects user preferences.
-                // Our job is ONLY to apply custom alignment.
+
                 SyntaxNode formattedRoot = root;
-                
+
                 if (!skipRoslynFormatting)
                 {
-                    // Log a warning if someone tries to use built-in formatting
-                    Logger.LogDebug("AlignService", "WARNING: skipRoslynFormatting=false is deprecated. Use IDE formatting instead.");
+                    // Apply Roslyn default formatting using provided workspace or create a temporary one
+                    Logger.LogDebug("AlignService", "Applying Roslyn IDE formatting + custom alignment in single pass");
+
+                    var workspaceToUse = workspace ?? new AdhocWorkspace();
+                    try
+                    {
+                        formattedRoot = Formatter.Format(root, workspaceToUse);
+                    }
+                    finally
+                    {
+                        // Dispose temp workspace if we created one
+                        if (workspace == null)
+                        {
+                            workspaceToUse?.Dispose();
+                        }
+                    }
                 }
-                
-                Logger.LogDebug("AlignService", "Applying custom alignment only (skipping Roslyn formatting)");
-                
+                else
+                {
+                    Logger.LogDebug("AlignService", "Applying custom alignment only (skipping Roslyn formatting)");
+                }
+
                 // Apply custom alignment
                 var alignedRoot = ApplyAlignmentProcessors(formattedRoot);
                 var result = alignedRoot.ToFullString();
-                
-                // CRITICAL: Compare result with original to avoid round-trip artifacts
+
                 if (result == code)
                 {
                     Logger.LogDebug("AlignService", "Result identical to input - returning original to avoid artifacts");
                     return code;
                 }
-                
-                Logger.LogDebug("AlignService", $"Alignment changed content (delta: {result.Length - code.Length} chars)");
+
+                Logger.LogDebug("AlignService", $"Content changed (delta: {result.Length - code.Length} chars)");
                 return result;
             }
             catch (Exception ex)

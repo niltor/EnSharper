@@ -12,23 +12,24 @@ namespace CodeFormatter
     /// <summary>
     /// Global singleton listener for document save events
     /// </summary>
-    internal sealed class GlobalDocumentSaveListener : IVsRunningDocTableEvents3, IDisposable
+    internal sealed class DocumentSaveListener : IVsRunningDocTableEvents3, IDisposable
     {
-        private static GlobalDocumentSaveListener instance;
+        private static DocumentSaveListener instance;
         private static readonly object lockObject = new object();
 
         private readonly SVsServiceProvider serviceProvider;
         private uint rdtCookie;
         private IVsRunningDocumentTable rdt;
         private bool isFormatting = false;
-        private readonly Dictionary<string, string> lastFormattedTextByPath = new Dictionary<string, string>();
+        private readonly Dictionary<string, string> lastFormattedTextByPath =
+            new Dictionary<string, string>();
 
-        private GlobalDocumentSaveListener(SVsServiceProvider serviceProvider)
+        private DocumentSaveListener(SVsServiceProvider serviceProvider)
         {
             this.serviceProvider = serviceProvider;
         }
 
-        public static GlobalDocumentSaveListener GetOrCreate(SVsServiceProvider serviceProvider)
+        public static DocumentSaveListener GetOrCreate(SVsServiceProvider serviceProvider)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
 
@@ -36,7 +37,7 @@ namespace CodeFormatter
             {
                 if (instance == null)
                 {
-                    instance = new GlobalDocumentSaveListener(serviceProvider);
+                    instance = new DocumentSaveListener(serviceProvider);
                     instance.Initialize();
                     Logger.LogDebug("GlobalDocumentSaveListener", "Global instance created");
                 }
@@ -53,7 +54,10 @@ namespace CodeFormatter
                 var svc = serviceProvider.GetService(typeof(SVsRunningDocumentTable));
                 if (svc == null)
                 {
-                    Logger.LogDebug("GlobalDocumentSaveListener", "SVsRunningDocumentTable service not available");
+                    Logger.LogDebug(
+                        "GlobalDocumentSaveListener",
+                        "SVsRunningDocumentTable service not available"
+                    );
                     return;
                 }
 
@@ -63,7 +67,10 @@ namespace CodeFormatter
                     int hr = rdt.AdviseRunningDocTableEvents(this, out rdtCookie);
                     if (hr != VSConstants.S_OK)
                     {
-                        Logger.LogDebug("GlobalDocumentSaveListener", $"Failed to advise RDT events. HRESULT: {hr}");
+                        Logger.LogDebug(
+                            "GlobalDocumentSaveListener",
+                            $"Failed to advise RDT events. HRESULT: {hr}"
+                        );
                         rdtCookie = 0;
                     }
                     else
@@ -125,33 +132,58 @@ namespace CodeFormatter
                         return VSConstants.S_OK;
                     }
 
-                    Logger.LogDebug("GlobalDocumentSaveListener", $"OnBeforeSave for {documentPath}");
+                    Logger.LogDebug(
+                        "GlobalDocumentSaveListener",
+                        $"OnBeforeSave for {documentPath}"
+                    );
 
                     // Only format the active document (not background saves, Save All, etc.)
                     var textView = GetActiveTextView();
                     if (textView == null)
                     {
-                        Logger.LogDebug("GlobalDocumentSaveListener", "No active text view - skipping format");
+                        Logger.LogDebug(
+                            "GlobalDocumentSaveListener",
+                            "No active text view - skipping format"
+                        );
                         return VSConstants.S_OK;
                     }
 
                     // Verify the active view is the document being saved
-                    var componentModel = serviceProvider.GetService(typeof(Microsoft.VisualStudio.ComponentModelHost.SComponentModel))
-                        as Microsoft.VisualStudio.ComponentModelHost.IComponentModel;
-                    var textDocumentFactory = componentModel?.GetService<ITextDocumentFactoryService>();
-                    
-                    if (textDocumentFactory == null ||
-                        !textDocumentFactory.TryGetTextDocument(textView.TextBuffer, out var activeDoc))
+                    var componentModel =
+                        serviceProvider.GetService(
+                            typeof(Microsoft.VisualStudio.ComponentModelHost.SComponentModel)
+                        ) as Microsoft.VisualStudio.ComponentModelHost.IComponentModel;
+                    var textDocumentFactory =
+                        componentModel?.GetService<ITextDocumentFactoryService>();
+
+                    if (
+                        textDocumentFactory == null
+                        || !textDocumentFactory.TryGetTextDocument(
+                            textView.TextBuffer,
+                            out var activeDoc
+                        )
+                    )
                     {
-                        Logger.LogDebug("GlobalDocumentSaveListener", "Cannot get document from active view");
+                        Logger.LogDebug(
+                            "GlobalDocumentSaveListener",
+                            "Cannot get document from active view"
+                        );
                         return VSConstants.S_OK;
                     }
 
                     // Only format if the active document is the one being saved
-                    if (!string.Equals(activeDoc.FilePath, documentPath, StringComparison.OrdinalIgnoreCase))
+                    if (
+                        !string.Equals(
+                            activeDoc.FilePath,
+                            documentPath,
+                            StringComparison.OrdinalIgnoreCase
+                        )
+                    )
                     {
-                        Logger.LogDebug("GlobalDocumentSaveListener", 
-                            $"Skipping - active document ({activeDoc.FilePath}) is not the one being saved ({documentPath})");
+                        Logger.LogDebug(
+                            "GlobalDocumentSaveListener",
+                            $"Skipping - active document ({activeDoc.FilePath}) is not the one being saved ({documentPath})"
+                        );
                         return VSConstants.S_OK;
                     }
 
@@ -163,9 +195,15 @@ namespace CodeFormatter
 
                     // Check if already formatted (prevent duplicate formatting on repeated saves)
                     var currentText = textBuffer.CurrentSnapshot.GetText();
-                    if (lastFormattedTextByPath.TryGetValue(documentPath, out var lastText) && lastText == currentText)
+                    if (
+                        lastFormattedTextByPath.TryGetValue(documentPath, out var lastText)
+                        && lastText == currentText
+                    )
                     {
-                        Logger.LogDebug("GlobalDocumentSaveListener", "Text unchanged since last format - skipping");
+                        Logger.LogDebug(
+                            "GlobalDocumentSaveListener",
+                            "Text unchanged since last format - skipping"
+                        );
                         return VSConstants.S_OK;
                     }
 
@@ -174,19 +212,30 @@ namespace CodeFormatter
                     // so by the time we get here, IDE formatting is already done.
                     // We only need to apply our custom alignment.
                     var alignService = AlignServiceFactory.CreateFromOptions(serviceProvider);
-                    bool formatted = FormattingCoordinator.TryFormat(textView, serviceProvider, alignService);
+                    bool formatted = FormattingCoordinator.TryFormat(
+                        textView,
+                        serviceProvider,
+                        alignService
+                    );
 
                     if (formatted)
                     {
                         // Remember formatted text to skip next save if unchanged
-                        lastFormattedTextByPath[documentPath] = textBuffer.CurrentSnapshot.GetText();
-                        Logger.LogDebug("GlobalDocumentSaveListener", "Custom alignment applied on save");
+                        lastFormattedTextByPath[documentPath] =
+                            textBuffer.CurrentSnapshot.GetText();
+                        Logger.LogDebug(
+                            "GlobalDocumentSaveListener",
+                            "Custom alignment applied on save"
+                        );
                     }
                     else
                     {
                         // No changes, but remember current text
                         lastFormattedTextByPath[documentPath] = currentText;
-                        Logger.LogDebug("GlobalDocumentSaveListener", "No alignment changes needed on save");
+                        Logger.LogDebug(
+                            "GlobalDocumentSaveListener",
+                            "No alignment changes needed on save"
+                        );
                     }
                 }
                 finally
@@ -223,16 +272,20 @@ namespace CodeFormatter
 
             try
             {
-                var componentModel = serviceProvider.GetService(typeof(Microsoft.VisualStudio.ComponentModelHost.SComponentModel))
-                    as Microsoft.VisualStudio.ComponentModelHost.IComponentModel;
+                var componentModel =
+                    serviceProvider.GetService(
+                        typeof(Microsoft.VisualStudio.ComponentModelHost.SComponentModel)
+                    ) as Microsoft.VisualStudio.ComponentModelHost.IComponentModel;
                 if (componentModel == null)
                     return null;
 
-                var editorAdapterFactory = componentModel.GetService<Microsoft.VisualStudio.Editor.IVsEditorAdaptersFactoryService>();
+                var editorAdapterFactory =
+                    componentModel.GetService<Microsoft.VisualStudio.Editor.IVsEditorAdaptersFactoryService>();
                 if (editorAdapterFactory == null)
                     return null;
 
-                var textManager = serviceProvider.GetService(typeof(SVsTextManager)) as IVsTextManager;
+                var textManager =
+                    serviceProvider.GetService(typeof(SVsTextManager)) as IVsTextManager;
                 if (textManager == null)
                     return null;
 
@@ -271,12 +324,22 @@ namespace CodeFormatter
 
         #region Unused IVsRunningDocTableEvents3 methods
 
-        public int OnAfterFirstDocumentLock(uint docCookie, uint dwRDTLockType, uint dwReadLocksRemaining, uint dwEditLocksRemaining)
+        public int OnAfterFirstDocumentLock(
+            uint docCookie,
+            uint dwRDTLockType,
+            uint dwReadLocksRemaining,
+            uint dwEditLocksRemaining
+        )
         {
             return VSConstants.S_OK;
         }
 
-        public int OnBeforeLastDocumentUnlock(uint docCookie, uint dwRDTLockType, uint dwReadLocksRemaining, uint dwEditLocksRemaining)
+        public int OnBeforeLastDocumentUnlock(
+            uint docCookie,
+            uint dwRDTLockType,
+            uint dwReadLocksRemaining,
+            uint dwEditLocksRemaining
+        )
         {
             return VSConstants.S_OK;
         }
@@ -296,7 +359,16 @@ namespace CodeFormatter
             return VSConstants.S_OK;
         }
 
-        public int OnAfterAttributeChangeEx(uint docCookie, uint grfAttribs, IVsHierarchy pHierOld, uint itemidOld, string pszMkDocumentOld, IVsHierarchy pHierNew, uint itemidNew, string pszMkDocumentNew)
+        public int OnAfterAttributeChangeEx(
+            uint docCookie,
+            uint grfAttribs,
+            IVsHierarchy pHierOld,
+            uint itemidOld,
+            string pszMkDocumentOld,
+            IVsHierarchy pHierNew,
+            uint itemidNew,
+            string pszMkDocumentNew
+        )
         {
             return VSConstants.S_OK;
         }

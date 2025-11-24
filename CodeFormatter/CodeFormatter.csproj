@@ -52,8 +52,8 @@
     </Compile>
     <Compile Include="Formatting\AlignService.cs" />
     <Compile Include="Formatting\FormattingCoordinator.cs" />
-    <Compile Include="Listeners\GlobalDocumentSaveListener.cs" />
-    <Compile Include="Listeners\GlobalKeyboardShortcutListener.cs" />
+    <Compile Include="Listeners\DocumentSaveListener.cs" />
+    <Compile Include="Listeners\DocumentFormatListener.cs" />
     <Compile Include="Processors\IAlignmentProcessor.cs" />
     <Compile Include="Processors\ParameterAlignmentProcessor.cs" />
     <Compile Include="Processors\ArgumentAlignmentProcessor.cs" />
