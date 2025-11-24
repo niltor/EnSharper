@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
@@ -21,8 +20,8 @@ namespace CodeFormatter
         private uint rdtCookie;
         private IVsRunningDocumentTable rdt;
         private bool isFormatting = false;
-        private readonly Dictionary<string, string> lastFormattedTextByPath =
-            new Dictionary<string, string>();
+        private string lastFormattedText = string.Empty;
+
 
         private DocumentSaveListener(SVsServiceProvider serviceProvider)
         {
@@ -88,7 +87,6 @@ namespace CodeFormatter
         public int OnBeforeSave(uint docCookie)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-
             if (isFormatting)
             {
                 Logger.LogDebug("GlobalDocumentSaveListener", "Skipping - already formatting");
@@ -98,8 +96,6 @@ namespace CodeFormatter
             try
             {
                 isFormatting = true;
-
-                // Get document info
                 uint grfRDTFlags;
                 uint dwReadLocks;
                 uint dwEditLocks;
@@ -137,7 +133,6 @@ namespace CodeFormatter
                         $"OnBeforeSave for {documentPath}"
                     );
 
-                    // Only format the active document (not background saves, Save All, etc.)
                     var textView = GetActiveTextView();
                     if (textView == null)
                     {
@@ -156,9 +151,7 @@ namespace CodeFormatter
                     var textDocumentFactory =
                         componentModel?.GetService<ITextDocumentFactoryService>();
 
-                    if (
-                        textDocumentFactory == null
-                        || !textDocumentFactory.TryGetTextDocument(
+                    if (textDocumentFactory == null || !textDocumentFactory.TryGetTextDocument(
                             textView.TextBuffer,
                             out var activeDoc
                         )
@@ -193,12 +186,11 @@ namespace CodeFormatter
                         return VSConstants.S_OK;
                     }
 
-                    // Check if already formatted (prevent duplicate formatting on repeated saves)
                     var currentText = textBuffer.CurrentSnapshot.GetText();
-                    if (
-                        lastFormattedTextByPath.TryGetValue(documentPath, out var lastText)
-                        && lastText == currentText
-                    )
+
+                    Logger.LogDebug("DocumentSaveListener", $"Current text: {currentText.Length}, last: {lastFormattedText.Length}");
+
+                    if (lastFormattedText == currentText)
                     {
                         Logger.LogDebug(
                             "GlobalDocumentSaveListener",
@@ -207,22 +199,18 @@ namespace CodeFormatter
                         return VSConstants.S_OK;
                     }
 
-                    // Apply custom alignment
-                    // Note: VS's Format on Save (if enabled) runs BEFORE OnBeforeSave,
-                    // so by the time we get here, IDE formatting is already done.
-                    // We only need to apply our custom alignment.
                     var alignService = AlignServiceFactory.CreateFromOptions(serviceProvider);
                     bool formatted = FormattingCoordinator.TryFormat(
                         textView,
                         serviceProvider,
-                        alignService
+                        alignService,
+                        false
                     );
 
                     if (formatted)
                     {
                         // Remember formatted text to skip next save if unchanged
-                        lastFormattedTextByPath[documentPath] =
-                            textBuffer.CurrentSnapshot.GetText();
+                        lastFormattedText = textBuffer.CurrentSnapshot.GetText();
                         Logger.LogDebug(
                             "GlobalDocumentSaveListener",
                             "Custom alignment applied on save"
@@ -230,8 +218,7 @@ namespace CodeFormatter
                     }
                     else
                     {
-                        // No changes, but remember current text
-                        lastFormattedTextByPath[documentPath] = currentText;
+                        lastFormattedText = currentText;
                         Logger.LogDebug(
                             "GlobalDocumentSaveListener",
                             "No alignment changes needed on save"
@@ -331,6 +318,10 @@ namespace CodeFormatter
             uint dwEditLocksRemaining
         )
         {
+            Logger.LogDebug(
+                "GlobalDocumentSaveListener",
+                "OnAfterFirstDocumentLock called - not used"
+            );
             return VSConstants.S_OK;
         }
 
@@ -341,6 +332,10 @@ namespace CodeFormatter
             uint dwEditLocksRemaining
         )
         {
+            Logger.LogDebug(
+                "GlobalDocumentSaveListener",
+                "OnBeforeLastDocumentUnlock called - not used"
+            );
             return VSConstants.S_OK;
         }
 

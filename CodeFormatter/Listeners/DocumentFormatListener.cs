@@ -132,7 +132,7 @@ namespace CodeFormatter
                     textView,
                     serviceProvider,
                     alignService,
-                    includeIDFormatting: true
+                    includeIDEFormatting: true
                 );
 
                 if (formatted)

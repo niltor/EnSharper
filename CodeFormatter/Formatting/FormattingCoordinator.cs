@@ -19,13 +19,13 @@ namespace CodeFormatter
         /// <param name="textView">The text view to format</param>
         /// <param name="serviceProvider">VS service provider</param>
         /// <param name="alignService">Alignment service</param>
-        /// <param name="includeIDFormatting">If true, applies IDE formatting + custom alignment in single edit.
+        /// <param name="includeIDEFormatting">If true, applies IDE formatting + custom alignment in single edit.
         /// If false, only applies custom alignment (assumes IDE already formatted).</param>
         public static bool TryFormat(
             IWpfTextView textView,
             SVsServiceProvider serviceProvider,
             AlignService alignService,
-            bool includeIDFormatting = false
+            bool includeIDEFormatting = false
         )
         {
             ThreadHelper.ThrowIfNotOnUIThread();
@@ -54,16 +54,14 @@ namespace CodeFormatter
                 var snapshot = textView.TextBuffer.CurrentSnapshot;
                 var text = snapshot.GetText();
 
-                Logger.LogDebug("FormattingCoordinator", $"Current text length: {text.Length}");
-
                 // Get the workspace from the text buffer for proper formatting
                 Workspace workspace = null;
-                if (includeIDFormatting)
+                if (includeIDEFormatting)
                 {
                     workspace = GetWorkspaceFromTextBuffer(textView.TextBuffer, serviceProvider);
                 }
 
-                var formattedText = alignService.FormatCode(text, skipRoslynFormatting: !includeIDFormatting, workspace: workspace);
+                var formattedText = alignService.FormatCode(text, skipRoslynFormatting: !includeIDEFormatting, workspace: workspace);
 
                 bool isEqual = formattedText == text;
                 Logger.LogDebug(
@@ -77,7 +75,7 @@ namespace CodeFormatter
                     return false;
                 }
 
-                var logMessage = includeIDFormatting
+                var logMessage = includeIDEFormatting
                     ? "Applying combined IDE formatting + custom alignment in single edit"
                     : "Applying custom alignment only";
                 Logger.LogDebug("FormattingCoordinator", logMessage);
