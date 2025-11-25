@@ -39,18 +39,74 @@ private readonly SystemRoleManager   _roleManager  = roleManager;
 
 **Note:** Property declarations are not aligned, only field declarations.
 
-And assignment statements to properties (in method bodies):
+And assignment statements to properties (in method bodies), including indexed properties:
 
 **Before:**
 ```csharp
 aesAlg.Key = Encoding.UTF8.GetBytes(Md5Hash(key));
 aesAlg.IV = aesAlg.Key[..16];
+
+currentMenus[index].Named = menu.Named;
+currentMenus[index].Sort = menu.Sort;
+currentMenus[index].Icon = menu.Icon;
 ```
 
 **After:**
 ```csharp
 aesAlg.Key = Encoding.UTF8.GetBytes(Md5Hash(key));
 aesAlg.IV  = aesAlg.Key[..16];
+
+currentMenus[index].Named = menu.Named;
+currentMenus[index].Sort  = menu.Sort;
+currentMenus[index].Icon  = menu.Icon;
+```
+
+### Object Initializer Alignment
+The extension aligns the `=` signs in object initializers when properties are on separate lines.
+
+**Before:**
+```csharp
+var menu = new SystemMenu
+{
+    Name = item.Name,
+    AccessCode = item.AccessCode,
+    MenuType = (MenuType)item.MenuType,
+    Parent = parent,
+    Sort = item.Sort ?? 0,
+    Icon = item.Icon,
+};
+```
+
+**After:**
+```csharp
+var menu = new SystemMenu
+{
+    Name       = item.Name,
+    AccessCode = item.AccessCode,
+    MenuType   = (MenuType)item.MenuType,
+    Parent     = parent,
+    Sort       = item.Sort ?? 0,
+    Icon       = item.Icon,
+};
+```
+
+### Chained Method Call Alignment
+When method calls are chained **inside class methods**, the extension ensures each method is on its own line with proper indentation. This only applies to chained calls within method bodies, not at the class field or property initialization level.
+
+**Before:**
+```csharp
+menus = await Queryable.AsNoTracking().OrderByDescending(t => t.Sort).ThenByDescending(t => t.CreatedTime).Skip((filter.PageIndex - 1) * filter.PageSize).Take(filter.PageSize).ToListAsync();
+```
+
+**After:**
+```csharp
+menus = await Queryable
+    .AsNoTracking()
+    .OrderByDescending(t => t.Sort)
+    .ThenByDescending(t => t.CreatedTime)
+    .Skip((filter.PageIndex - 1) * filter.PageSize)
+    .Take(filter.PageSize)
+    .ToListAsync();
 ```
 
 ### Parameter Alignment

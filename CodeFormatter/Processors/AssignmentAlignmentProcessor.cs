@@ -41,6 +41,19 @@ namespace CodeFormatter
                 return node.WithStatements(SyntaxFactory.List(newStatements));
             }
 
+            public override SyntaxNode VisitUsingStatement(UsingStatementSyntax node)
+            {
+                // Process statements inside using statement block
+                if (node.Statement is BlockSyntax block)
+                {
+                    var statements = block.Statements.ToList();
+                    var newStatements = ProcessStatements(statements);
+                    var newBlock = block.WithStatements(SyntaxFactory.List(newStatements));
+                    node = node.WithStatement(newBlock);
+                }
+                return base.VisitUsingStatement(node);
+            }
+
             public override SyntaxNode VisitClassDeclaration(ClassDeclarationSyntax node)
             {
                 var members = node.Members.ToList();

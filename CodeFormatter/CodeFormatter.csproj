@@ -58,6 +58,8 @@
     <Compile Include="Processors\ParameterAlignmentProcessor.cs" />
     <Compile Include="Processors\ArgumentAlignmentProcessor.cs" />
     <Compile Include="Processors\AssignmentAlignmentProcessor.cs" />
+    <Compile Include="Processors\ObjectInitializerAlignmentProcessor.cs" />
+    <Compile Include="Processors\ChainedMethodAlignmentProcessor.cs" />
     <Compile Include="Listeners\TextViewCreationListener.cs" />
     <Compile Include="Logger.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

@@ -43,7 +43,9 @@ namespace CodeFormatter
             {
                 new ParameterAlignmentProcessor(settings.ConstructorParameterThreshold, settings.MethodParameterThreshold),
                 new ArgumentAlignmentProcessor(settings.MethodParameterThreshold),
-                new AssignmentAlignmentProcessor(settings.MaxAlignmentGap)
+                new AssignmentAlignmentProcessor(settings.MaxAlignmentGap),
+                new ObjectInitializerAlignmentProcessor(settings.MaxAlignmentGap),
+                new ChainedMethodAlignmentProcessor()
             };
         }
 
