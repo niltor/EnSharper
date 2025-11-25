@@ -103,18 +103,26 @@ namespace CodeFormatter
                 while (current != null)
                 {
                     var leadingTrivia = current.GetLeadingTrivia();
-                    bool afterNewline = false;
                     
-                    foreach (var trivia in leadingTrivia.Reverse())
+                    // Iterate forward to find whitespace after the last newline
+                    string lastWhitespace = "";
+                    for (int i = 0; i < leadingTrivia.Count; i++)
                     {
-                        if (trivia.IsKind(SyntaxKind.WhitespaceTrivia) && afterNewline)
-                        {
-                            return trivia.ToFullString();
-                        }
+                        var trivia = leadingTrivia[i];
                         if (trivia.IsKind(SyntaxKind.EndOfLineTrivia))
                         {
-                            afterNewline = true;
+                            // Reset - we found a newline, next whitespace is the indentation
+                            lastWhitespace = "";
                         }
+                        else if (trivia.IsKind(SyntaxKind.WhitespaceTrivia))
+                        {
+                            lastWhitespace = trivia.ToFullString();
+                        }
+                    }
+                    
+                    if (!string.IsNullOrEmpty(lastWhitespace))
+                    {
+                        return lastWhitespace;
                     }
                     
                     current = current.Parent;
