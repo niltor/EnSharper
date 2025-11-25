@@ -1,13 +1,13 @@
-using System;
-using System.Collections.Generic;
+using CodeFormatter.Services;
+using Microsoft.CodeAnalysis;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
-using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
-using Microsoft.VisualStudio.TextManager.Interop;
+using System;
+using System.Collections.Generic;
 
-namespace CodeFormatter
+namespace CodeFormatter.Listeners
 {
     /// <summary>
     /// Global singleton listener for document save events
@@ -99,145 +99,40 @@ namespace CodeFormatter
                 Logger.LogDebug("DocumentSaveListener", "Skipping - already formatting");
                 return VSConstants.S_OK;
             }
-
             try
             {
                 isFormatting = true;
-                uint grfRDTFlags;
-                uint dwReadLocks;
-                uint dwEditLocks;
-                string documentPath;
-                IVsHierarchy ppHier;
-                uint pitemid;
-                IntPtr ppunkDocData = IntPtr.Zero;
-
-                try
+                var task = ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
                 {
-                    int hr = rdt.GetDocumentInfo(
-                        docCookie,
-                        out grfRDTFlags,
-                        out dwReadLocks,
-                        out dwEditLocks,
-                        out documentPath,
-                        out ppHier,
-                        out pitemid,
-                        out ppunkDocData
-                    );
-
-                    if (hr != VSConstants.S_OK || string.IsNullOrEmpty(documentPath))
+                    IWpfTextView textView = null;
+                    var document = AlignService.GetActiveDocument(serviceProvider, out textView);
+                    if (document.Project.Language == LanguageNames.CSharp && document.FilePath.EndsWith(".cs"))
                     {
-                        return VSConstants.S_OK;
+                        var alignService = AlignServiceFactory.CreateFromOptions(serviceProvider);
+
+                        if (alignService.IsEnabled)
+                        {
+                            Document formattedDoc = await alignService.FormatDocumentAsync(document);
+
+                            if (formattedDoc != document)
+                            {
+                                var oldText = await document.GetTextAsync();
+                                var newText = await formattedDoc.GetTextAsync();
+                                var changes = newText.GetTextChanges(oldText);
+
+                                using (var edit = textView.TextBuffer.CreateEdit())
+                                {
+                                    foreach (var change in changes)
+                                    {
+                                        edit.Replace(change.Span.Start, change.Span.Length, change.NewText);
+                                    }
+                                    edit.Apply();
+                                }
+                            }
+                        }
                     }
 
-                    // Check if this is a C# file
-                    if (!documentPath.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
-                    {
-                        return VSConstants.S_OK;
-                    }
-
-                    Logger.LogDebug(
-                        "DocumentSaveListener",
-                        $"OnBeforeSave for {documentPath}"
-                    );
-
-                    var textView = GetActiveTextView();
-                    if (textView == null)
-                    {
-                        Logger.LogDebug(
-                            "DocumentSaveListener",
-                            "No active text view - skipping format"
-                        );
-                        return VSConstants.S_OK;
-                    }
-
-                    // Verify the active view is the document being saved
-                    var componentModel =
-                        serviceProvider.GetService(
-                            typeof(Microsoft.VisualStudio.ComponentModelHost.SComponentModel)
-                        ) as Microsoft.VisualStudio.ComponentModelHost.IComponentModel;
-                    var textDocumentFactory =
-                        componentModel?.GetService<ITextDocumentFactoryService>();
-
-                    if (textDocumentFactory == null || !textDocumentFactory.TryGetTextDocument(
-                            textView.TextBuffer,
-                            out var activeDoc
-                        )
-                    )
-                    {
-                        Logger.LogDebug(
-                            "DocumentSaveListener",
-                            "Cannot get document from active view"
-                        );
-                        return VSConstants.S_OK;
-                    }
-
-                    // Only format if the active document is the one being saved
-                    if (
-                        !string.Equals(
-                            activeDoc.FilePath,
-                            documentPath,
-                            StringComparison.OrdinalIgnoreCase
-                        )
-                    )
-                    {
-                        Logger.LogDebug(
-                            "DocumentSaveListener",
-                            $"Skipping - active document ({activeDoc.FilePath}) is not the one being saved ({documentPath})"
-                        );
-                        return VSConstants.S_OK;
-                    }
-
-                    var textBuffer = textView.TextBuffer;
-                    if (textBuffer == null)
-                    {
-                        return VSConstants.S_OK;
-                    }
-                    var fileContent = System.IO.File.ReadAllText(documentPath);
-
-                    Logger.LogDebug("DocumentSaveListener", $"Current text: {fileContent.Length}, last: {(lastFormattedContentByPath.TryGetValue(documentPath, out var lastContent) ? lastContent.Length : 0)}");
-
-                    if (lastFormattedContentByPath.TryGetValue(documentPath, out var lastFormattedContent) && lastFormattedContent == fileContent)
-                    {
-                        Logger.LogDebug(
-                            "DocumentSaveListener",
-                            "Text unchanged since last format - skipping"
-                        );
-                        return VSConstants.S_OK;
-                    }
-
-                    var alignService = AlignServiceFactory.CreateFromOptions(serviceProvider);
-
-                    // Use JoinableTaskFactory to run async code synchronously on the UI thread
-                    bool formatted = ThreadHelper.JoinableTaskFactory.Run(async () =>
-                    {
-                        return FormattingCoordinator.TryFormat(textView, serviceProvider, alignService);
-                    });
-
-                    if (formatted)
-                    {
-                        // Remember formatted text to skip next save if unchanged
-                        lastFormattedContentByPath[documentPath] = textBuffer.CurrentSnapshot.GetText();
-                        Logger.LogDebug(
-                            "DocumentSaveListener",
-                            "Custom alignment applied on save with minimal text changes"
-                        );
-                    }
-                    else
-                    {
-                        lastFormattedContentByPath[documentPath] = fileContent;
-                        Logger.LogDebug(
-                            "DocumentSaveListener",
-                            "No alignment changes needed on save"
-                        );
-                    }
-                }
-                finally
-                {
-                    if (ppunkDocData != IntPtr.Zero)
-                    {
-                        System.Runtime.InteropServices.Marshal.Release(ppunkDocData);
-                    }
-                }
+                });
             }
             catch (Exception ex)
             {
@@ -256,45 +151,7 @@ namespace CodeFormatter
             return VSConstants.S_OK;
         }
 
-        /// <summary>
-        /// Gets the currently active text view
-        /// </summary>
-        private IWpfTextView GetActiveTextView()
-        {
-            ThreadHelper.ThrowIfNotOnUIThread();
 
-            try
-            {
-                var componentModel =
-                    serviceProvider.GetService(
-                        typeof(Microsoft.VisualStudio.ComponentModelHost.SComponentModel)
-                    ) as Microsoft.VisualStudio.ComponentModelHost.IComponentModel;
-                if (componentModel == null)
-                    return null;
-
-                var editorAdapterFactory =
-                    componentModel.GetService<Microsoft.VisualStudio.Editor.IVsEditorAdaptersFactoryService>();
-                if (editorAdapterFactory == null)
-                    return null;
-
-                var textManager =
-                    serviceProvider.GetService(typeof(SVsTextManager)) as IVsTextManager;
-                if (textManager == null)
-                    return null;
-
-                IVsTextView vsTextView;
-                int hr = textManager.GetActiveView(1, null, out vsTextView);
-                if (hr != VSConstants.S_OK || vsTextView == null)
-                    return null;
-
-                return editorAdapterFactory.GetWpfTextView(vsTextView);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError("DocumentSaveListener.GetActiveTextView", ex.ToString());
-                return null;
-            }
-        }
 
         public void Dispose()
         {

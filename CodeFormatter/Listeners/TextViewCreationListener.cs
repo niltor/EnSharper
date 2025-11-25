@@ -1,10 +1,10 @@
-using System.ComponentModel.Composition;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Utilities;
+using System.ComponentModel.Composition;
 
-namespace CodeFormatter
+namespace CodeFormatter.Listeners
 {
     /// <summary>
     /// Text view creation listener for hooking into editor

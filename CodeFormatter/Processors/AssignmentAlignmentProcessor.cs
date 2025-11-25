@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace CodeFormatter
+namespace CodeFormatter.Processors
 {
     /// <summary>
     /// Aligns declarations/assignments when they form consecutive groups.

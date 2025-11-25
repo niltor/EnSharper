@@ -1,9 +1,8 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using System.Linq;
 
-namespace CodeFormatter
+namespace CodeFormatter.Processors
 {
     /// <summary>
     /// Aligns invocation arguments when the count exceeds the configured threshold.

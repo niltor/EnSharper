@@ -1,9 +1,10 @@
-using System;
+using CodeFormatter.Configuration;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
+using System;
 
-namespace CodeFormatter
+namespace CodeFormatter.Services
 {
     /// <summary>
     /// Helper class for creating configured AlignService instances
@@ -25,6 +26,7 @@ namespace CodeFormatter
                 if (options != null)
                 {
                     var settings = new AlignmentSettings(
+                        options.EnablePlugin,
                         options.MaxFileSizeBytes,
                         options.MaxAlignmentGap,
                         options.ConstructorParameterThreshold,

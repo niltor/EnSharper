@@ -1,8 +1,8 @@
-﻿using System;
+﻿using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Shell.Interop;
+using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Shell;
-using Microsoft.VisualStudio.Shell.Interop;
 
 namespace CodeFormatter
 {
@@ -22,7 +22,7 @@ namespace CodeFormatter
                 throw new ArgumentNullException(nameof(serviceProvider));
 
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-            
+
             if (initializationAttempted)
             {
                 Debug.WriteLine($"[Logger] Initialization already attempted. outputPane is {(outputPane == null ? "null" : "available")}");
@@ -42,10 +42,10 @@ namespace CodeFormatter
 
                 // Use local variable for ref parameter
                 Guid paneGuid = OutputPaneGuid;
-                
+
                 // Try to get existing pane first
                 int hr = outputWindow.GetPane(ref paneGuid, out outputPane);
-                
+
                 if (hr != 0 || outputPane == null)
                 {
                     // Create new pane
@@ -69,7 +69,7 @@ namespace CodeFormatter
 
                 // Activate the pane to make it visible
                 outputPane?.Activate();
-                
+
                 Debug.WriteLine("[Logger] Successfully initialized output pane");
                 LogInfo("Logger", "Code Align logger initialized successfully");
             }

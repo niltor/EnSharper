@@ -1,11 +1,10 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace CodeFormatter
+namespace CodeFormatter.Processors
 {
     /// <summary>
     /// Aligns assignment operators in object initializers.
@@ -109,7 +108,7 @@ namespace CodeFormatter
 
                 // Align the assignments - use ReplaceNodes to preserve separators
                 var alignedExpressions = new Dictionary<ExpressionSyntax, ExpressionSyntax>();
-                
+
                 for (int i = 0; i < expressions.Count; i++)
                 {
                     if (expressions[i] is AssignmentExpressionSyntax assignment)

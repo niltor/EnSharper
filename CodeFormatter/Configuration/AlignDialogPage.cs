@@ -2,7 +2,7 @@ using Microsoft.VisualStudio.Shell;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 
-namespace CodeFormatter
+namespace CodeFormatter.Configuration
 {
     /// <summary>
     /// Options page for the Code Align extension
@@ -47,7 +47,7 @@ namespace CodeFormatter
         {
             base.OnApply(e);
         }
-        
+
     }
 
     /// <summary>

@@ -2,10 +2,8 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 
-namespace CodeFormatter
+namespace CodeFormatter.Processors
 {
     /// <summary>
     /// Ensures chained method calls are on separate lines and properly aligned.
@@ -53,7 +51,7 @@ namespace CodeFormatter
                 if (node.Expression is MemberAccessExpressionSyntax)
                 {
                     var chainLength = CountChainDepth(node.Expression);
-                    
+
                     if (chainLength >= minChainLength && !AreChainCallsOnSeparateLines(node.Expression))
                     {
                         // Format the chain
@@ -125,12 +123,12 @@ namespace CodeFormatter
                 {
                     var nameLineSpan = memberAccess.Name.GetLocation().GetLineSpan();
                     int currentLine = nameLineSpan.StartLinePosition.Line;
-                    
+
                     if (previousLine != null && currentLine == previousLine)
                     {
                         return false;
                     }
-                    
+
                     previousLine = currentLine;
                     current = memberAccess.Expression;
                 }
@@ -144,7 +142,7 @@ namespace CodeFormatter
                 while (current != null)
                 {
                     var leadingTrivia = current.GetLeadingTrivia();
-                    
+
                     // Iterate through trivia to find whitespace after the last newline
                     string lastWhitespace = "";
                     for (int i = 0; i < leadingTrivia.Count; i++)
@@ -161,12 +159,12 @@ namespace CodeFormatter
                             lastWhitespace += trivia.ToFullString();
                         }
                     }
-                    
+
                     if (!string.IsNullOrEmpty(lastWhitespace))
                     {
                         return lastWhitespace;
                     }
-                    
+
                     current = current.Parent;
                 }
 
@@ -177,10 +175,10 @@ namespace CodeFormatter
             {
                 // Add standard indentation increment (matches ParameterAlignmentProcessor)
                 var chainIndentation = baseIndentation + new string(' ', IndentationSpaces);
-                
+
                 // Format the expression recursively
                 var formattedExpression = FormatMemberAccessChain(node.Expression, chainIndentation);
-                
+
                 // Update the invocation with formatted expression
                 return node.WithExpression(formattedExpression);
             }
@@ -191,7 +189,7 @@ namespace CodeFormatter
                 {
                     // Recursively format the left side
                     var formattedExpression = FormatMemberAccessChain(memberAccess.Expression, indentation);
-                    
+
                     // Add line break and indentation before the dot operator
                     // Use Environment.NewLine to respect platform line ending convention
                     var operatorToken = memberAccess.OperatorToken
@@ -202,16 +200,16 @@ namespace CodeFormatter
                             )
                         )
                         .WithTrailingTrivia(SyntaxFactory.TriviaList());
-                    
+
                     // Remove leading trivia from the name
                     var name = memberAccess.Name.WithLeadingTrivia(SyntaxFactory.TriviaList());
-                    
+
                     return memberAccess
                         .WithExpression(formattedExpression)
                         .WithOperatorToken(operatorToken)
                         .WithName(name);
                 }
-                
+
                 return expression;
             }
         }
