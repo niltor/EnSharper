@@ -161,7 +161,10 @@ namespace CodeFormatter
         /// <summary>
         /// Attempts to get the Roslyn Document for the current text buffer.
         /// </summary>
-        private static Document GetDocumentFromTextBuffer(ITextBuffer textBuffer, SVsServiceProvider serviceProvider)
+        private static async Task<Document> GetDocumentFromTextBufferAsync(
+            ITextBuffer textBuffer, 
+            SVsServiceProvider serviceProvider,
+            CancellationToken cancellationToken)
         {
             try
             {
@@ -187,18 +190,33 @@ namespace CodeFormatter
                 }
                 
                 // Fallback: Iterate through all documents to find one with matching text container
+                // This is a slow path - add limits to prevent excessive blocking
                 if (document == null)
                 {
+                    Logger.LogDebug("FormattingCoordinator", "Using fallback document search (may be slow for large solutions)");
+                    
+                    const int maxDocumentsToCheck = 100; // Limit to prevent UI thread blocking
+                    int documentsChecked = 0;
+                    
                     foreach (var project in workspace.CurrentSolution.Projects)
                     {
                         foreach (var doc in project.Documents)
                         {
-                            var docText = doc.GetTextAsync(CancellationToken.None).Result;
+                            if (documentsChecked >= maxDocumentsToCheck)
+                            {
+                                Logger.LogDebug("FormattingCoordinator", $"Reached maximum document check limit ({maxDocumentsToCheck})");
+                                break;
+                            }
+                            
+                            var docText = await doc.GetTextAsync(cancellationToken).ConfigureAwait(false);
                             if (docText?.Container == textContainer)
                             {
                                 document = doc;
+                                Logger.LogDebug("FormattingCoordinator", $"Found document via fallback after checking {documentsChecked + 1} documents");
                                 break;
                             }
+                            
+                            documentsChecked++;
                         }
                         if (document != null) break;
                     }
@@ -266,7 +284,7 @@ namespace CodeFormatter
                 var snapshot = textView.TextBuffer.CurrentSnapshot;
 
                 // Try to get the document from the workspace
-                var document = GetDocumentFromTextBuffer(textView.TextBuffer, serviceProvider);
+                var document = await GetDocumentFromTextBufferAsync(textView.TextBuffer, serviceProvider, cancellationToken);
                 
                 if (document == null)
                 {
