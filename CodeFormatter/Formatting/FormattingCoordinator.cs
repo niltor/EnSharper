@@ -119,15 +119,12 @@ namespace CodeFormatter
             try
             {
                 // Format the document asynchronously
-                var formattedDocumentTask = alignService.FormatDocumentAsync(
+                // Note: We use ConfigureAwait(false) to avoid capturing the UI synchronization context
+                var formattedDocument = alignService.FormatDocumentAsync(
                     document,
                     skipRoslynFormatting: !includeIDFormatting,
                     CancellationToken.None
-                );
-
-                // Wait for the task to complete (we're on UI thread, so this is safe for short operations)
-                // In a real-world scenario, you might want to use async/await throughout the chain
-                var formattedDocument = formattedDocumentTask.GetAwaiter().GetResult();
+                ).ConfigureAwait(false).GetAwaiter().GetResult();
 
                 if (formattedDocument == document)
                 {
@@ -136,11 +133,10 @@ namespace CodeFormatter
                 }
 
                 // Get text changes between original and formatted document
-                var oldTextTask = document.GetTextAsync(CancellationToken.None);
-                var newTextTask = formattedDocument.GetTextAsync(CancellationToken.None);
-                
-                var oldText = oldTextTask.GetAwaiter().GetResult();
-                var newText = newTextTask.GetAwaiter().GetResult();
+                var oldText = document.GetTextAsync(CancellationToken.None)
+                    .ConfigureAwait(false).GetAwaiter().GetResult();
+                var newText = formattedDocument.GetTextAsync(CancellationToken.None)
+                    .ConfigureAwait(false).GetAwaiter().GetResult();
 
                 var changes = newText.GetTextChanges(oldText);
                 if (changes == null || !changes.Any())
