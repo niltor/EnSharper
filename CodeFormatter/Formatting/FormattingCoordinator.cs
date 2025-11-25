@@ -119,7 +119,10 @@ namespace CodeFormatter
             try
             {
                 // Format the document asynchronously
-                // Note: We use ConfigureAwait(false) to avoid capturing the UI synchronization context
+                // Note: We must block here because TryFormat is called synchronously from VS events.
+                // ConfigureAwait(false) prevents deadlocks by not capturing the sync context.
+                // This is acceptable because formatting is typically fast and we need to be on the UI thread
+                // for the subsequent TextBuffer operations.
                 var formattedDocument = alignService.FormatDocumentAsync(
                     document,
                     skipRoslynFormatting: !includeIDFormatting,
