@@ -174,21 +174,44 @@ namespace CodeFormatter
 
                 // Get the document from the current snapshot
                 var snapshot = textBuffer.CurrentSnapshot;
-                var sourceText = snapshot.AsText();
+                var textContainer = snapshot.AsText().Container;
                 
-                // Try to find the document in the workspace
-                var documentId = workspace.GetDocumentIdInCurrentContext(textBuffer.AsTextContainer());
-                if (documentId == null)
+                // Try to find the document in the workspace using the text container
+                Document document = null;
+                
+                // First try: Use the extension method if available (requires Microsoft.CodeAnalysis.Workspaces)
+                var documentId = workspace.GetDocumentIdInCurrentContext(textContainer);
+                if (documentId != null)
                 {
-                    Logger.LogDebug("FormattingCoordinator", "Could not find document ID in workspace");
-                    return null;
+                    document = workspace.CurrentSolution.GetDocument(documentId);
+                }
+                
+                // Fallback: Iterate through all documents to find one with matching text container
+                if (document == null)
+                {
+                    foreach (var project in workspace.CurrentSolution.Projects)
+                    {
+                        foreach (var doc in project.Documents)
+                        {
+                            var docText = doc.GetTextAsync(CancellationToken.None).Result;
+                            if (docText?.Container == textContainer)
+                            {
+                                document = doc;
+                                break;
+                            }
+                        }
+                        if (document != null) break;
+                    }
                 }
 
-                var document = workspace.CurrentSolution.GetDocument(documentId);
                 if (document != null)
                 {
                     Logger.LogDebug("FormattingCoordinator", $"Found document: {document.Name}");
                     return document;
+                }
+                else
+                {
+                    Logger.LogDebug("FormattingCoordinator", "Could not find document in workspace");
                 }
             }
             catch (Exception ex)
@@ -279,17 +302,19 @@ namespace CodeFormatter
                 // Apply changes to the text buffer
                 using (var edit = textView.TextBuffer.CreateEdit())
                 {
-                    if (edit.Snapshot != snapshot)
+                    // Verify buffer hasn't changed since we started formatting
+                    if (textView.TextBuffer.CurrentSnapshot != snapshot)
                     {
                         Logger.LogDebug(
                             "FormattingCoordinator",
-                            "Snapshot changed before edit could be applied"
+                            "Buffer was modified during formatting - aborting to avoid conflicts"
                         );
                         edit.Cancel();
                         return false;
                     }
 
-                    // Apply each text change
+                    // Apply each text change in descending order to avoid position shifts
+                    // TextChanges from Roslyn are guaranteed to be non-overlapping
                     foreach (var change in changes.OrderByDescending(c => c.Span.Start))
                     {
                         var span = new Span(change.Span.Start, change.Span.Length);
