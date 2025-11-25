@@ -140,7 +140,7 @@ namespace CodeFormatter
                 {
                     var leadingTrivia = current.GetLeadingTrivia();
                     
-                    // Iterate forward to find whitespace after the last newline
+                    // Iterate through trivia to find whitespace after the last newline
                     string lastWhitespace = "";
                     for (int i = 0; i < leadingTrivia.Count; i++)
                     {
