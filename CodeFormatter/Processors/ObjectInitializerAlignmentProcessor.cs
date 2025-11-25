@@ -108,11 +108,9 @@ namespace CodeFormatter
                     }
                 }
 
-                // Align the assignments - rebuild the separated list preserving separators
-                var separatedList = initializer.Expressions;
-                var newNodes = new List<SyntaxNode>();
-                var separators = separatedList.GetSeparators().ToList();
-
+                // Align the assignments - use ReplaceNodes to preserve separators
+                var alignedExpressions = new Dictionary<ExpressionSyntax, ExpressionSyntax>();
+                
                 for (int i = 0; i < expressions.Count; i++)
                 {
                     if (expressions[i] is AssignmentExpressionSyntax assignment)
@@ -120,26 +118,30 @@ namespace CodeFormatter
                         var propertyPos = propertyPositions[i];
                         var spacesToAdd = maxPropertyPos - propertyPos;
 
-                        var newLeft = assignment.Left.WithTrailingTrivia(
+                        // Preserve existing trailing trivia and add spacing
+                        var existingTrivia = assignment.Left.GetTrailingTrivia();
+                        var newTrivia = SyntaxFactory.TriviaList(
                             SyntaxFactory.Whitespace(new string(' ', spacesToAdd + 1))
                         );
+                        
+                        var newLeft = assignment.Left.WithTrailingTrivia(newTrivia);
                         var newAssignment = assignment.WithLeft(newLeft);
-                        newNodes.Add(newAssignment);
-                    }
-                    else
-                    {
-                        newNodes.Add(expressions[i]);
-                    }
-
-                    // Add separator if not the last item
-                    if (i < separators.Count)
-                    {
-                        newNodes.Add(separators[i]);
+                        alignedExpressions[assignment] = newAssignment;
                     }
                 }
 
-                var newExpressions = SyntaxFactory.SeparatedList<ExpressionSyntax>(newNodes);
-                return initializer.WithExpressions(newExpressions);
+                if (alignedExpressions.Count == 0)
+                {
+                    return initializer;
+                }
+
+                // Replace the old expressions with aligned ones
+                var newInitializer = initializer.ReplaceNodes(
+                    alignedExpressions.Keys,
+                    (oldNode, _) => alignedExpressions[oldNode]
+                );
+
+                return newInitializer;
             }
         }
     }

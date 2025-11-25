@@ -103,13 +103,20 @@ namespace CodeFormatter
                 while (current != null)
                 {
                     var leadingTrivia = current.GetLeadingTrivia();
+                    bool afterNewline = false;
+                    
                     foreach (var trivia in leadingTrivia.Reverse())
                     {
-                        if (trivia.IsKind(SyntaxKind.WhitespaceTrivia))
+                        if (trivia.IsKind(SyntaxKind.WhitespaceTrivia) && afterNewline)
                         {
                             return trivia.ToFullString();
                         }
+                        if (trivia.IsKind(SyntaxKind.EndOfLineTrivia))
+                        {
+                            afterNewline = true;
+                        }
                     }
+                    
                     current = current.Parent;
                 }
 
@@ -118,6 +125,7 @@ namespace CodeFormatter
 
             private InvocationExpressionSyntax FormatChainCalls(InvocationExpressionSyntax node, string baseIndentation)
             {
+                // Use standard 4-space indentation increment (matches ParameterAlignmentProcessor)
                 var chainIndentation = baseIndentation + "    ";
                 
                 // Format the expression recursively
