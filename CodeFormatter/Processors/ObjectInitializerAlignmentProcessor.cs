@@ -118,7 +118,8 @@ namespace CodeFormatter
                         var propertyPos = propertyPositions[i];
                         var spacesToAdd = maxPropertyPos - propertyPos;
 
-                        // Replace trailing trivia with new spacing
+                        // Replace trailing trivia with new spacing for alignment
+                        // This intentionally replaces any existing trivia to ensure consistent alignment
                         var newLeft = assignment.Left.WithTrailingTrivia(
                             SyntaxFactory.Whitespace(new string(' ', spacesToAdd + 1))
                         );

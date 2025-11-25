@@ -1,6 +1,8 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace CodeFormatter
@@ -11,6 +13,7 @@ namespace CodeFormatter
     internal class ChainedMethodAlignmentProcessor : IAlignmentProcessor
     {
         private readonly int minChainLength;
+        private const int IndentationSpaces = 4; // Standard indentation increment
 
         public ChainedMethodAlignmentProcessor(int minChainLength = 2)
         {
@@ -133,8 +136,8 @@ namespace CodeFormatter
 
             private InvocationExpressionSyntax FormatChainCalls(InvocationExpressionSyntax node, string baseIndentation)
             {
-                // Use standard 4-space indentation increment (matches ParameterAlignmentProcessor)
-                var chainIndentation = baseIndentation + "    ";
+                // Add standard indentation increment (matches ParameterAlignmentProcessor)
+                var chainIndentation = baseIndentation + new string(' ', IndentationSpaces);
                 
                 // Format the expression recursively
                 var formattedExpression = FormatMemberAccessChain(node.Expression, chainIndentation);
@@ -151,10 +154,11 @@ namespace CodeFormatter
                     var formattedExpression = FormatMemberAccessChain(memberAccess.Expression, indentation);
                     
                     // Add line break and indentation before the dot operator
+                    // Use Environment.NewLine to respect platform line ending convention
                     var operatorToken = memberAccess.OperatorToken
                         .WithLeadingTrivia(
                             SyntaxFactory.TriviaList(
-                                SyntaxFactory.CarriageReturnLineFeed,
+                                SyntaxFactory.EndOfLine(Environment.NewLine),
                                 SyntaxFactory.Whitespace(indentation)
                             )
                         )
