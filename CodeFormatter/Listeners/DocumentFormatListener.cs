@@ -123,24 +123,29 @@ namespace CodeFormatter
 
                 Logger.LogDebug(
                     "DocumentFormatListener",
-                    "Intercepting Format Document: applying IDE formatting + custom alignment in SINGLE PASS"
+                    "Intercepting Format Document: applying IDE formatting + custom alignment using document-based approach"
                 );
 
-                // Apply both IDE formatting + custom alignment in one edit
+                // Apply both IDE formatting + custom alignment using the new document-based approach
                 var alignService = AlignServiceFactory.CreateFromOptions(serviceProvider);
-                bool formatted = FormattingCoordinator.TryFormat(
-                    textView,
-                    serviceProvider,
-                    alignService,
-                    includeIDEFormatting: true
-                );
+                
+                // Use JoinableTaskFactory to run async code synchronously on the UI thread
+                bool formatted = ThreadHelper.JoinableTaskFactory.Run(async () =>
+                {
+                    return await FormattingCoordinator.TryFormatAsync(
+                        textView,
+                        serviceProvider,
+                        alignService,
+                        includeIDEFormatting: true
+                    );
+                });
 
                 if (formatted)
                 {
                     lastFormattedContent = textBuffer.CurrentSnapshot.GetText();
                     Logger.LogDebug(
                         "DocumentFormatListener",
-                        "Combined formatting applied successfully in single text edit"
+                        "Combined formatting applied successfully with minimal text changes"
                     );
 
                     // Cancel the IDE's default formatting since we've already handled it
