@@ -206,12 +206,17 @@ namespace CodeFormatter
                     }
 
                     var alignService = AlignServiceFactory.CreateFromOptions(serviceProvider);
-                    bool formatted = FormattingCoordinator.TryFormat(
-                        textView,
-                        serviceProvider,
-                        alignService,
-                        false
-                    );
+                    
+                    // Use JoinableTaskFactory to run async code synchronously on the UI thread
+                    bool formatted = ThreadHelper.JoinableTaskFactory.Run(async () =>
+                    {
+                        return await FormattingCoordinator.TryFormatAsync(
+                            textView,
+                            serviceProvider,
+                            alignService,
+                            includeIDEFormatting: false
+                        );
+                    });
 
                     if (formatted)
                     {
@@ -219,7 +224,7 @@ namespace CodeFormatter
                         lastFormattedContentByPath[documentPath] = textBuffer.CurrentSnapshot.GetText();
                         Logger.LogDebug(
                             "DocumentSaveListener",
-                            "Custom alignment applied on save"
+                            "Custom alignment applied on save with minimal text changes"
                         );
                     }
                     else
