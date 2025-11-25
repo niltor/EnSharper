@@ -54,16 +54,12 @@ namespace CodeFormatter
                 {
                     var chainLength = CountChainDepth(node.Expression);
                     
-                    if (chainLength >= minChainLength)
+                    if (chainLength >= minChainLength && !AreChainCallsOnSeparateLines(node.Expression))
                     {
-                        // Check if already on separate lines
-                        if (!AreChainCallsOnSeparateLines(node.Expression))
-                        {
-                            // Format the chain
-                            var indentation = DetectIndentation(node);
-                            var formattedNode = FormatChainCalls(node, indentation);
-                            return formattedNode;
-                        }
+                        // Format the chain
+                        var indentation = DetectIndentation(node);
+                        var formattedNode = FormatChainCalls(node, indentation);
+                        return formattedNode;
                     }
                 }
 
@@ -75,6 +71,14 @@ namespace CodeFormatter
                 var current = node.Parent;
                 while (current != null)
                 {
+                    // Stop if we hit a field or property declaration (before checking for lambdas)
+                    // This prevents formatting chains in field/property initializers with lambdas
+                    if (current is FieldDeclarationSyntax ||
+                        current is PropertyDeclarationSyntax)
+                    {
+                        return false;
+                    }
+
                     // Check if we're inside a method, constructor, property accessor, etc.
                     if (current is MethodDeclarationSyntax ||
                         current is ConstructorDeclarationSyntax ||
@@ -152,7 +156,8 @@ namespace CodeFormatter
                         }
                         else if (trivia.IsKind(SyntaxKind.WhitespaceTrivia))
                         {
-                            lastWhitespace = trivia.ToFullString();
+                            // Accumulate whitespace to handle multiple consecutive whitespace trivia
+                            lastWhitespace += trivia.ToFullString();
                         }
                     }
                     
