@@ -1,5 +1,9 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Text;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
@@ -15,6 +19,7 @@ namespace CodeFormatter
 
         /// <summary>
         /// Formats the document with custom alignment and optionally IDE formatting.
+        /// Uses Document-based API for differential updates to reduce flickering.
         /// </summary>
         /// <param name="textView">The text view to format</param>
         /// <param name="serviceProvider">VS service provider</param>
@@ -52,24 +57,179 @@ namespace CodeFormatter
                     viewportTop.Position - viewportTop.GetContainingLine().Start.Position;
 
                 var snapshot = textView.TextBuffer.CurrentSnapshot;
-                var text = snapshot.GetText();
 
-                Logger.LogDebug("FormattingCoordinator", $"Current text length: {text.Length}");
-
-                // Get the workspace from the text buffer for proper formatting
-                Workspace workspace = null;
-                if (includeIDFormatting)
+                // Try to use Document-based approach for differential updates
+                var workspace = GetWorkspaceFromTextBuffer(textView.TextBuffer, serviceProvider);
+                if (workspace != null)
                 {
-                    workspace = GetWorkspaceFromTextBuffer(textView.TextBuffer, serviceProvider);
+                    var document = GetDocumentFromTextBuffer(textView.TextBuffer, workspace);
+                    if (document != null)
+                    {
+                        Logger.LogDebug("FormattingCoordinator", "Using Document-based formatting with differential updates");
+                        return TryFormatWithDocument(
+                            textView,
+                            document,
+                            alignService,
+                            includeIDFormatting,
+                            snapshot,
+                            caretLine,
+                            caretColumn,
+                            topLine,
+                            topLineOffset
+                        );
+                    }
                 }
 
-                var formattedText = alignService.FormatCode(text, skipRoslynFormatting: !includeIDFormatting, workspace: workspace);
+                // Fallback to string-based formatting if Document is not available
+                Logger.LogDebug("FormattingCoordinator", "Document not available, falling back to string-based formatting");
+                return TryFormatWithString(
+                    textView,
+                    alignService,
+                    includeIDFormatting,
+                    workspace,
+                    snapshot,
+                    caretLine,
+                    caretColumn,
+                    topLine,
+                    topLineOffset
+                );
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("FormattingCoordinator.TryFormat", ex.ToString());
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Formats using Document API with differential text changes to minimize flickering.
+        /// </summary>
+        private static bool TryFormatWithDocument(
+            IWpfTextView textView,
+            Document document,
+            AlignService alignService,
+            bool includeIDFormatting,
+            ITextSnapshot snapshot,
+            int caretLine,
+            int caretColumn,
+            int topLine,
+            int topLineOffset
+        )
+        {
+            try
+            {
+                // Format the document asynchronously
+                // Note: We must block here because TryFormat is called synchronously from VS events.
+                // We're already on the UI thread (enforced by ThreadHelper.ThrowIfNotOnUIThread above)
+                // and the subsequent TextBuffer operations require the UI thread, so we don't use
+                // ConfigureAwait(false) to ensure continuations run on the same thread.
+                // This blocking is acceptable because formatting operations are typically fast.
+                var formattedDocument = alignService.FormatDocumentAsync(
+                    document,
+                    skipRoslynFormatting: !includeIDFormatting,
+                    CancellationToken.None
+                ).GetAwaiter().GetResult();
+
+                if (formattedDocument == document)
+                {
+                    Logger.LogDebug("FormattingCoordinator", "Document unchanged after formatting");
+                    return false;
+                }
+
+                // Get text changes between original and formatted document
+                var oldText = document.GetTextAsync(CancellationToken.None).GetAwaiter().GetResult();
+                var newText = formattedDocument.GetTextAsync(CancellationToken.None).GetAwaiter().GetResult();
+
+                // Get text changes with exception handling
+                IEnumerable<TextChange> changes = null;
+                try
+                {
+                    changes = newText.GetTextChanges(oldText);
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError("FormattingCoordinator", $"Exception in GetTextChanges: {ex}");
+                    return false;
+                }
+
+                if (changes == null || !changes.Any())
+                {
+                    Logger.LogDebug("FormattingCoordinator", "No text changes detected");
+                    return false;
+                }
+
+                // Materialize the collection to avoid multiple enumerations
+                var changesList = changes.ToList();
+                Logger.LogDebug("FormattingCoordinator", $"Applying {changesList.Count} differential text changes");
+
+                // Apply the differential changes to the text buffer
+                using (var edit = textView.TextBuffer.CreateEdit())
+                {
+                    if (edit.Snapshot != snapshot)
+                    {
+                        Logger.LogDebug("FormattingCoordinator", "Snapshot changed before edit could be applied");
+                        edit.Cancel();
+                        return false;
+                    }
+
+                    // Apply changes in reverse order to maintain correct positions
+                    foreach (var change in changesList.OrderByDescending(c => c.Span.Start))
+                    {
+                        var span = new Span(change.Span.Start, change.Span.Length);
+                        edit.Replace(span, change.NewText);
+                    }
+
+                    var newSnapshot = edit.Apply();
+                    Logger.LogDebug("FormattingCoordinator", "Differential text edits applied successfully");
+
+                    RestoreCaretAndViewport(
+                        textView,
+                        snapshot,
+                        newSnapshot,
+                        caretLine,
+                        caretColumn,
+                        topLine,
+                        topLineOffset
+                    );
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("FormattingCoordinator.TryFormatWithDocument", ex.ToString());
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Fallback formatting using string-based approach (full text replacement).
+        /// </summary>
+        private static bool TryFormatWithString(
+            IWpfTextView textView,
+            AlignService alignService,
+            bool includeIDFormatting,
+            Workspace workspace,
+            ITextSnapshot snapshot,
+            int caretLine,
+            int caretColumn,
+            int topLine,
+            int topLineOffset
+        )
+        {
+            try
+            {
+                var text = snapshot.GetText();
+                Logger.LogDebug("FormattingCoordinator", $"Current text length: {text.Length}");
+
+                var formattedText = alignService.FormatCode(
+                    text,
+                    skipRoslynFormatting: !includeIDFormatting,
+                    workspace: workspace
+                );
 
                 bool isEqual = formattedText == text;
-                Logger.LogDebug(
-                    "FormattingCoordinator",
-                    $"Formatted text length: {formattedText.Length}, Equal: {isEqual}"
-                );
+                Logger.LogDebug("FormattingCoordinator", $"Formatted text length: {formattedText.Length}, Equal: {isEqual}");
 
                 if (isEqual)
                 {
@@ -78,18 +238,15 @@ namespace CodeFormatter
                 }
 
                 var logMessage = includeIDFormatting
-                    ? "Applying combined IDE formatting + custom alignment in single edit"
-                    : "Applying custom alignment only";
+                    ? "Applying combined IDE formatting + custom alignment (full text replacement)"
+                    : "Applying custom alignment only (full text replacement)";
                 Logger.LogDebug("FormattingCoordinator", logMessage);
 
                 using (var edit = textView.TextBuffer.CreateEdit())
                 {
                     if (edit.Snapshot != snapshot)
                     {
-                        Logger.LogDebug(
-                            "FormattingCoordinator",
-                            "Snapshot changed before edit could be applied"
-                        );
+                        Logger.LogDebug("FormattingCoordinator", "Snapshot changed before edit could be applied");
                         edit.Cancel();
                         return false;
                     }
@@ -114,7 +271,7 @@ namespace CodeFormatter
             }
             catch (Exception ex)
             {
-                Logger.LogError("FormattingCoordinator.TryFormat", ex.ToString());
+                Logger.LogError("FormattingCoordinator.TryFormatWithString", ex.ToString());
                 return false;
             }
         }
@@ -151,6 +308,40 @@ namespace CodeFormatter
             catch (Exception ex)
             {
                 Logger.LogDebug("FormattingCoordinator", $"Could not obtain Workspace: {ex.Message}");
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Attempts to get the Roslyn Document for the current text buffer from the workspace.
+        /// </summary>
+        private static Document GetDocumentFromTextBuffer(ITextBuffer textBuffer, Workspace workspace)
+        {
+            if (workspace == null || textBuffer == null)
+                return null;
+
+            try
+            {
+                var textContainer = textBuffer.AsTextContainer();
+                
+                // Try to get the document ID from the text container
+                var documentId = workspace.GetDocumentIdInCurrentContext(textContainer);
+                if (documentId != null)
+                {
+                    var document = workspace.CurrentSolution.GetDocument(documentId);
+                    if (document != null)
+                    {
+                        Logger.LogDebug("FormattingCoordinator", $"Obtained Document from Workspace: {document.Name}");
+                        return document;
+                    }
+                }
+
+                Logger.LogDebug("FormattingCoordinator", "Could not obtain Document from Workspace");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogDebug("FormattingCoordinator", $"Error getting Document: {ex.Message}");
             }
 
             return null;

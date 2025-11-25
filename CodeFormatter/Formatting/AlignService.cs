@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Formatting;
@@ -106,6 +108,65 @@ namespace CodeFormatter
             {
                 Logger.LogError("AlignService.FormatCode", ex.ToString());
                 return code;
+            }
+        }
+
+        /// <summary>
+        /// Formats a Document with Roslyn default formatting + custom alignment using Document API for differential updates.
+        /// This method is preferred when working with VS Workspace to avoid full text replacement and reduce flickering.
+        /// </summary>
+        /// <param name="document">The document to format</param>
+        /// <param name="skipRoslynFormatting">If true, skip Roslyn formatting and only apply alignment</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>A new Document with formatting applied, or the original if no changes needed</returns>
+        public async Task<Document> FormatDocumentAsync(
+            Document document,
+            bool skipRoslynFormatting = false,
+            CancellationToken cancellationToken = default)
+        {
+            if (document == null)
+                throw new ArgumentNullException(nameof(document));
+
+            Document formattedDocument = document;
+            try
+            {
+                // Apply Roslyn IDE formatting if requested
+                if (!skipRoslynFormatting)
+                {
+                    Logger.LogDebug("AlignService", "Applying Roslyn IDE formatting to Document");
+                    formattedDocument = await Formatter.FormatAsync(document, cancellationToken: cancellationToken);
+                }
+                else
+                {
+                    Logger.LogDebug("AlignService", "Skipping Roslyn formatting (applying custom alignment only)");
+                }
+
+                // Get syntax root and apply custom alignment
+                var root = await formattedDocument.GetSyntaxRootAsync(cancellationToken);
+                if (root == null)
+                {
+                    Logger.LogDebug("AlignService", "Could not get syntax root from document");
+                    return document;
+                }
+
+                var alignedRoot = ApplyAlignmentProcessors(root);
+
+                // If alignment didn't change anything, return the formatted document as-is
+                if (alignedRoot == root)
+                {
+                    Logger.LogDebug("AlignService", "No alignment changes needed");
+                    return formattedDocument;
+                }
+
+                // Return document with aligned syntax root
+                Logger.LogDebug("AlignService", "Alignment applied to document");
+                return formattedDocument.WithSyntaxRoot(alignedRoot);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("AlignService.FormatDocumentAsync", ex.ToString());
+                // Return formattedDocument if Roslyn formatting succeeded, otherwise return original document
+                return formattedDocument;
             }
         }
 
