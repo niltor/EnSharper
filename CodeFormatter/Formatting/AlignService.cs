@@ -127,10 +127,9 @@ namespace CodeFormatter
             if (document == null)
                 throw new ArgumentNullException(nameof(document));
 
+            Document formattedDocument = document;
             try
             {
-                Document formattedDocument = document;
-
                 // Apply Roslyn IDE formatting if requested
                 if (!skipRoslynFormatting)
                 {
@@ -167,7 +166,7 @@ namespace CodeFormatter
             {
                 Logger.LogError("AlignService.FormatDocumentAsync", ex.ToString());
                 // Return formattedDocument if Roslyn formatting succeeded, otherwise return original document
-                return formattedDocument ?? document;
+                return formattedDocument;
             }
         }
 
