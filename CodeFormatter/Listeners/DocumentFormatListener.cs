@@ -94,7 +94,8 @@ namespace CodeFormatter
         {
             ThreadHelper.ThrowIfNotOnUIThread();
 
-            cancelDefault = true;
+            // Default to not cancelling the IDE formatting.
+            cancelDefault = false;
             try
             {
                 var textView = GetActiveTextView();
@@ -108,6 +109,32 @@ namespace CodeFormatter
                 if (textBuffer == null)
                 {
                     return;
+                }
+
+                try
+                {
+                    var componentModel =
+                        serviceProvider.GetService(
+                            typeof(Microsoft.VisualStudio.ComponentModelHost.SComponentModel)
+                        ) as Microsoft.VisualStudio.ComponentModelHost.IComponentModel;
+                    var textDocumentFactory = componentModel?.GetService<Microsoft.VisualStudio.Text.ITextDocumentFactoryService>();
+
+                    if (textDocumentFactory != null && textDocumentFactory.TryGetTextDocument(textBuffer, out var textDoc))
+                    {
+                        var filePath = textDoc.FilePath;
+                        if (!filePath.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
+                        {
+                            Logger.LogDebug("DocumentFormatListener", $"Skipping Format Document for non-C# file: {filePath}");
+                            // Allow IDE to perform its default formatting
+                            cancelDefault = false;
+                            return;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogDebug("DocumentFormatListener", $"Could not determine file path: {ex.Message}");
+                    // Fall through and attempt formatting if we cannot determine file type
                 }
 
                 var contentBeforeFormat = textBuffer.CurrentSnapshot.GetText();
@@ -128,16 +155,11 @@ namespace CodeFormatter
 
                 // Apply both IDE formatting + custom alignment using the new document-based approach
                 var alignService = AlignServiceFactory.CreateFromOptions(serviceProvider);
-                
+
                 // Use JoinableTaskFactory to run async code synchronously on the UI thread
                 bool formatted = ThreadHelper.JoinableTaskFactory.Run(async () =>
                 {
-                    return await FormattingCoordinator.TryFormatAsync(
-                        textView,
-                        serviceProvider,
-                        alignService,
-                        includeIDEFormatting: true
-                    );
+                    return FormattingCoordinator.TryFormat(textView, serviceProvider, alignService);
                 });
 
                 if (formatted)
@@ -148,7 +170,6 @@ namespace CodeFormatter
                         "Combined formatting applied successfully with minimal text changes"
                     );
 
-                    // Cancel the IDE's default formatting since we've already handled it
                     Logger.LogDebug(
                         "DocumentFormatListener",
                         "IDE default formatting cancelled (CancelDefault=true)"

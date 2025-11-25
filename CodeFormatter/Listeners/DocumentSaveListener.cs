@@ -206,16 +206,11 @@ namespace CodeFormatter
                     }
 
                     var alignService = AlignServiceFactory.CreateFromOptions(serviceProvider);
-                    
+
                     // Use JoinableTaskFactory to run async code synchronously on the UI thread
                     bool formatted = ThreadHelper.JoinableTaskFactory.Run(async () =>
                     {
-                        return await FormattingCoordinator.TryFormatAsync(
-                            textView,
-                            serviceProvider,
-                            alignService,
-                            includeIDEFormatting: false
-                        );
+                        return FormattingCoordinator.TryFormat(textView, serviceProvider, alignService);
                     });
 
                     if (formatted)

@@ -3,10 +3,7 @@
     <Metadata>
         <Identity Id="Ater.CodeAlign" Version="0.1.0" Language="en-US" Publisher="niltor" />
         <DisplayName>CodeFormatter</DisplayName>
-        <Description xml:space="preserve">Code align when:
-1 define variable/class fields
-2 multi method parameters
-3 multi main constructor parameters</Description>
+        <Description xml:space="preserve">Csharp code align formatter</Description>
         <MoreInfo>https://github.com/niltor/EnSharper</MoreInfo>
         <GettingStartedGuide>https://github.com/niltor/EnSharper</GettingStartedGuide>
         <Icon>logo.jpg</Icon>

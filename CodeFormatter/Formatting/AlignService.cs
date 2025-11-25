@@ -58,7 +58,7 @@ namespace CodeFormatter
         /// <param name="skipRoslynFormatting">If true, skip Roslyn formatting and only apply alignment (useful when VS already formatted).
         /// If false, apply both Roslyn formatting and custom alignment in one pass.</param>
         /// <param name="workspace">Optional workspace for proper formatting. If null, uses AdhocWorkspace.</param>
-        public string FormatCode(string code, bool skipRoslynFormatting = false, Workspace workspace = null)
+        public string FormatCode(string code, Workspace workspace)
         {
             if (string.IsNullOrEmpty(code))
                 return code;
@@ -68,30 +68,6 @@ namespace CodeFormatter
                 var root = tree.GetRoot();
 
                 SyntaxNode formattedRoot = root;
-
-                if (!skipRoslynFormatting)
-                {
-                    // Apply Roslyn default formatting using provided workspace or create a temporary one
-                    Logger.LogDebug("AlignService", "Applying Roslyn IDE formatting + custom alignment in single pass");
-
-                    var workspaceToUse = workspace ?? new AdhocWorkspace();
-                    try
-                    {
-                        formattedRoot = Formatter.Format(root, workspaceToUse);
-                    }
-                    finally
-                    {
-                        // Dispose temp workspace if we created one
-                        if (workspace == null)
-                        {
-                            workspaceToUse?.Dispose();
-                        }
-                    }
-                }
-                else
-                {
-                    Logger.LogDebug("AlignService", "Applying custom alignment only (skipping Roslyn formatting)");
-                }
 
                 // Apply custom alignment
                 var alignedRoot = ApplyAlignmentProcessors(formattedRoot);
@@ -135,8 +111,8 @@ namespace CodeFormatter
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>The formatted document, or the original document if no changes were made</returns>
         public async Task<Document> FormatDocumentAsync(
-            Document document, 
-            bool skipRoslynFormatting = false, 
+            Document document,
+            bool skipRoslynFormatting = false,
             CancellationToken cancellationToken = default)
         {
             if (document == null)
