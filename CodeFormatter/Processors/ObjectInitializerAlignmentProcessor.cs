@@ -54,16 +54,18 @@ namespace CodeFormatter
 
                 // Check if all expressions are on separate lines
                 var expressions = initializer.Expressions.ToList();
-                var lineNumbers = expressions.Select(expr => expr.GetLocation().GetLineSpan().StartLinePosition.Line).ToList();
-                
                 bool allOnSeparateLines = true;
-                for (int i = 1; i < lineNumbers.Count; i++)
+                int? previousLine = null;
+
+                foreach (var expr in expressions)
                 {
-                    if (lineNumbers[i] == lineNumbers[i - 1])
+                    var currentLine = expr.GetLocation().GetLineSpan().StartLinePosition.Line;
+                    if (previousLine.HasValue && currentLine == previousLine.Value)
                     {
                         allOnSeparateLines = false;
                         break;
                     }
+                    previousLine = currentLine;
                 }
 
                 if (!allOnSeparateLines)

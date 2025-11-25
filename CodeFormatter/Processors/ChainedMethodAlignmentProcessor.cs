@@ -71,8 +71,9 @@ namespace CodeFormatter
                 var current = node.Parent;
                 while (current != null)
                 {
-                    // Stop if we hit a field or property declaration (before checking for lambdas)
-                    // This prevents formatting chains in field/property initializers with lambdas
+                    // Stop if we hit a field or property declaration
+                    // This prevents formatting chains in field/property initializers,
+                    // including those with lambda expressions (AnonymousFunctionExpressionSyntax)
                     if (current is FieldDeclarationSyntax ||
                         current is PropertyDeclarationSyntax)
                     {
