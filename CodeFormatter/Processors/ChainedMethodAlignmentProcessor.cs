@@ -43,6 +43,12 @@ namespace CodeFormatter
                     return base.VisitInvocationExpression(node);
                 }
 
+                // Only process chains inside method bodies, not at class field/property level
+                if (!IsInsideMethodBody(node))
+                {
+                    return base.VisitInvocationExpression(node);
+                }
+
                 // Check if this invocation is part of a chain
                 if (node.Expression is MemberAccessExpressionSyntax)
                 {
@@ -62,6 +68,33 @@ namespace CodeFormatter
                 }
 
                 return base.VisitInvocationExpression(node);
+            }
+
+            private bool IsInsideMethodBody(SyntaxNode node)
+            {
+                var current = node.Parent;
+                while (current != null)
+                {
+                    // Check if we're inside a method, constructor, property accessor, etc.
+                    if (current is MethodDeclarationSyntax ||
+                        current is ConstructorDeclarationSyntax ||
+                        current is AccessorDeclarationSyntax ||
+                        current is LocalFunctionStatementSyntax ||
+                        current is AnonymousFunctionExpressionSyntax)
+                    {
+                        return true;
+                    }
+
+                    // Stop if we hit a type declaration (class, struct, etc.)
+                    if (current is TypeDeclarationSyntax)
+                    {
+                        return false;
+                    }
+
+                    current = current.Parent;
+                }
+
+                return false;
             }
 
             private int CountChainDepth(SyntaxNode node)

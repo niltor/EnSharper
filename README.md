@@ -91,7 +91,7 @@ var menu = new SystemMenu
 ```
 
 ### Chained Method Call Alignment
-When method calls are chained, the extension ensures each method is on its own line with proper indentation.
+When method calls are chained **inside class methods**, the extension ensures each method is on its own line with proper indentation. This only applies to chained calls within method bodies, not at the class field or property initialization level.
 
 **Before:**
 ```csharp
