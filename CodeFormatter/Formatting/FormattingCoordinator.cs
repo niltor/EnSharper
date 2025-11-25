@@ -197,6 +197,7 @@ namespace CodeFormatter
                     
                     const int maxDocumentsToCheck = 100; // Limit to prevent UI thread blocking
                     int documentsChecked = 0;
+                    bool limitReached = false;
                     
                     foreach (var project in workspace.CurrentSolution.Projects)
                     {
@@ -205,6 +206,7 @@ namespace CodeFormatter
                             if (documentsChecked >= maxDocumentsToCheck)
                             {
                                 Logger.LogDebug("FormattingCoordinator", $"Reached maximum document check limit ({maxDocumentsToCheck})");
+                                limitReached = true;
                                 break;
                             }
                             
@@ -218,7 +220,9 @@ namespace CodeFormatter
                             
                             documentsChecked++;
                         }
-                        if (document != null) break;
+                        
+                        // Exit outer loop if we found the document or reached the limit
+                        if (document != null || limitReached) break;
                     }
                 }
 
