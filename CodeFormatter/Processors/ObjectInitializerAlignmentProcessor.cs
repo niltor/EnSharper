@@ -108,8 +108,11 @@ namespace CodeFormatter
                     }
                 }
 
-                // Align the assignments
-                var newExpressions = new SeparatedSyntaxList<ExpressionSyntax>();
+                // Align the assignments - rebuild the separated list preserving separators
+                var separatedList = initializer.Expressions;
+                var newNodes = new List<SyntaxNode>();
+                var separators = separatedList.GetSeparators().ToList();
+
                 for (int i = 0; i < expressions.Count; i++)
                 {
                     if (expressions[i] is AssignmentExpressionSyntax assignment)
@@ -121,14 +124,21 @@ namespace CodeFormatter
                             SyntaxFactory.Whitespace(new string(' ', spacesToAdd + 1))
                         );
                         var newAssignment = assignment.WithLeft(newLeft);
-                        newExpressions = newExpressions.Add(newAssignment);
+                        newNodes.Add(newAssignment);
                     }
                     else
                     {
-                        newExpressions = newExpressions.Add(expressions[i]);
+                        newNodes.Add(expressions[i]);
+                    }
+
+                    // Add separator if not the last item
+                    if (i < separators.Count)
+                    {
+                        newNodes.Add(separators[i]);
                     }
                 }
 
+                var newExpressions = SyntaxFactory.SeparatedList<ExpressionSyntax>(newNodes);
                 return initializer.WithExpressions(newExpressions);
             }
         }
