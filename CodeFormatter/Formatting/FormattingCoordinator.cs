@@ -120,15 +120,15 @@ namespace CodeFormatter
             {
                 // Format the document asynchronously
                 // Note: We must block here because TryFormat is called synchronously from VS events.
-                // ConfigureAwait(false) helps avoid some deadlock scenarios by not capturing sync context,
-                // but we're already on the UI thread (enforced by ThreadHelper.ThrowIfNotOnUIThread above)
-                // and the subsequent TextBuffer operations require the UI thread.
+                // We're already on the UI thread (enforced by ThreadHelper.ThrowIfNotOnUIThread above)
+                // and the subsequent TextBuffer operations require the UI thread, so we don't use
+                // ConfigureAwait(false) to ensure continuations run on the same thread.
                 // This blocking is acceptable because formatting operations are typically fast.
                 var formattedDocument = alignService.FormatDocumentAsync(
                     document,
                     skipRoslynFormatting: !includeIDFormatting,
                     CancellationToken.None
-                ).ConfigureAwait(false).GetAwaiter().GetResult();
+                ).GetAwaiter().GetResult();
 
                 if (formattedDocument == document)
                 {
@@ -137,19 +137,30 @@ namespace CodeFormatter
                 }
 
                 // Get text changes between original and formatted document
-                var oldText = document.GetTextAsync(CancellationToken.None)
-                    .ConfigureAwait(false).GetAwaiter().GetResult();
-                var newText = formattedDocument.GetTextAsync(CancellationToken.None)
-                    .ConfigureAwait(false).GetAwaiter().GetResult();
+                var oldText = document.GetTextAsync(CancellationToken.None).GetAwaiter().GetResult();
+                var newText = formattedDocument.GetTextAsync(CancellationToken.None).GetAwaiter().GetResult();
 
-                var changes = newText.GetTextChanges(oldText);
+                // Get text changes with exception handling
+                IEnumerable<TextChange> changes = null;
+                try
+                {
+                    changes = newText.GetTextChanges(oldText);
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError("FormattingCoordinator", $"Exception in GetTextChanges: {ex}");
+                    return false;
+                }
+
                 if (changes == null || !changes.Any())
                 {
                     Logger.LogDebug("FormattingCoordinator", "No text changes detected");
                     return false;
                 }
 
-                Logger.LogDebug("FormattingCoordinator", $"Applying {changes.Count()} differential text changes");
+                // Materialize the collection to avoid multiple enumerations
+                var changesList = changes.ToList();
+                Logger.LogDebug("FormattingCoordinator", $"Applying {changesList.Count} differential text changes");
 
                 // Apply the differential changes to the text buffer
                 using (var edit = textView.TextBuffer.CreateEdit())
@@ -162,7 +173,7 @@ namespace CodeFormatter
                     }
 
                     // Apply changes in reverse order to maintain correct positions
-                    foreach (var change in changes.OrderByDescending(c => c.Span.Start))
+                    foreach (var change in changesList.OrderByDescending(c => c.Span.Start))
                     {
                         var span = new Span(change.Span.Start, change.Span.Length);
                         edit.Replace(span, change.NewText);
@@ -312,8 +323,7 @@ namespace CodeFormatter
 
             try
             {
-                var currentSnapshot = textBuffer.CurrentSnapshot;
-                var textContainer = currentSnapshot.TextBuffer.AsTextContainer();
+                var textContainer = textBuffer.AsTextContainer();
                 
                 // Try to get the document ID from the text container
                 var documentId = workspace.GetDocumentIdInCurrentContext(textContainer);

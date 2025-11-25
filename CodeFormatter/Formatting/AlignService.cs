@@ -166,7 +166,8 @@ namespace CodeFormatter
             catch (Exception ex)
             {
                 Logger.LogError("AlignService.FormatDocumentAsync", ex.ToString());
-                return document;
+                // Return formattedDocument if Roslyn formatting succeeded, otherwise return original document
+                return formattedDocument ?? document;
             }
         }
 
