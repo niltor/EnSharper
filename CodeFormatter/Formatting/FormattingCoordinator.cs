@@ -336,7 +336,6 @@ namespace CodeFormatter
 
             return null;
         }
-        }
 
         private static void RestoreCaretAndViewport(
             IWpfTextView textView,
