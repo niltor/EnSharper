@@ -1,0 +1,160 @@
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using System.Linq;
+
+namespace CodeFormatter
+{
+    /// <summary>
+    /// Ensures chained method calls are on separate lines and properly aligned.
+    /// </summary>
+    internal class ChainedMethodAlignmentProcessor : IAlignmentProcessor
+    {
+        private readonly int minChainLength;
+
+        public ChainedMethodAlignmentProcessor(int minChainLength = 2)
+        {
+            this.minChainLength = minChainLength;
+        }
+
+        public SyntaxNode Apply(SyntaxNode root)
+        {
+            var rewriter = new ChainedMethodAlignmentRewriter(minChainLength);
+            return rewriter.Visit(root);
+        }
+
+        private class ChainedMethodAlignmentRewriter : CSharpSyntaxRewriter
+        {
+            private readonly int minChainLength;
+
+            public ChainedMethodAlignmentRewriter(int minChainLength)
+            {
+                this.minChainLength = minChainLength;
+            }
+
+            public override SyntaxNode VisitInvocationExpression(InvocationExpressionSyntax node)
+            {
+                // Only process top-level invocations (not nested in a member access)
+                if (node.Parent is MemberAccessExpressionSyntax)
+                {
+                    return base.VisitInvocationExpression(node);
+                }
+
+                // Check if this invocation is part of a chain
+                if (node.Expression is MemberAccessExpressionSyntax)
+                {
+                    var chainLength = CountChainDepth(node.Expression);
+                    
+                    if (chainLength >= minChainLength)
+                    {
+                        // Check if already on separate lines
+                        if (!AreChainCallsOnSeparateLines(node.Expression))
+                        {
+                            // Format the chain
+                            var indentation = DetectIndentation(node);
+                            var formattedNode = FormatChainCalls(node, indentation);
+                            return formattedNode;
+                        }
+                    }
+                }
+
+                return base.VisitInvocationExpression(node);
+            }
+
+            private int CountChainDepth(SyntaxNode node)
+            {
+                int count = 0;
+                var current = node;
+
+                while (current is MemberAccessExpressionSyntax memberAccess)
+                {
+                    count++;
+                    current = memberAccess.Expression;
+                }
+
+                return count;
+            }
+
+            private bool AreChainCallsOnSeparateLines(SyntaxNode node)
+            {
+                int? previousLine = null;
+                var current = node;
+
+                while (current is MemberAccessExpressionSyntax memberAccess)
+                {
+                    var nameLineSpan = memberAccess.Name.GetLocation().GetLineSpan();
+                    int currentLine = nameLineSpan.StartLinePosition.Line;
+                    
+                    if (previousLine != null && currentLine == previousLine)
+                    {
+                        return false;
+                    }
+                    
+                    previousLine = currentLine;
+                    current = memberAccess.Expression;
+                }
+
+                return true;
+            }
+
+            private string DetectIndentation(SyntaxNode node)
+            {
+                var current = node;
+                while (current != null)
+                {
+                    var leadingTrivia = current.GetLeadingTrivia();
+                    foreach (var trivia in leadingTrivia.Reverse())
+                    {
+                        if (trivia.IsKind(SyntaxKind.WhitespaceTrivia))
+                        {
+                            return trivia.ToFullString();
+                        }
+                    }
+                    current = current.Parent;
+                }
+
+                return "";
+            }
+
+            private InvocationExpressionSyntax FormatChainCalls(InvocationExpressionSyntax node, string baseIndentation)
+            {
+                var chainIndentation = baseIndentation + "    ";
+                
+                // Format the expression recursively
+                var formattedExpression = FormatMemberAccessChain(node.Expression, chainIndentation);
+                
+                // Update the invocation with formatted expression
+                return node.WithExpression(formattedExpression);
+            }
+
+            private ExpressionSyntax FormatMemberAccessChain(ExpressionSyntax expression, string indentation)
+            {
+                if (expression is MemberAccessExpressionSyntax memberAccess)
+                {
+                    // Recursively format the left side
+                    var formattedExpression = FormatMemberAccessChain(memberAccess.Expression, indentation);
+                    
+                    // Add line break and indentation before the dot operator
+                    var operatorToken = memberAccess.OperatorToken
+                        .WithLeadingTrivia(
+                            SyntaxFactory.TriviaList(
+                                SyntaxFactory.CarriageReturnLineFeed,
+                                SyntaxFactory.Whitespace(indentation)
+                            )
+                        )
+                        .WithTrailingTrivia(SyntaxFactory.TriviaList());
+                    
+                    // Remove leading trivia from the name
+                    var name = memberAccess.Name.WithLeadingTrivia(SyntaxFactory.TriviaList());
+                    
+                    return memberAccess
+                        .WithExpression(formattedExpression)
+                        .WithOperatorToken(operatorToken)
+                        .WithName(name);
+                }
+                
+                return expression;
+            }
+        }
+    }
+}
