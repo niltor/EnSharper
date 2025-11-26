@@ -1,8 +1,8 @@
-﻿using CodeFormatter.Services;
+﻿using System;
+using CodeFormatter.Services;
 using Microsoft.CodeAnalysis;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Text.Editor;
-using System;
 using Document = Microsoft.CodeAnalysis.Document;
 
 namespace CodeFormatter.Listeners
@@ -77,6 +77,7 @@ namespace CodeFormatter.Listeners
             cancelDefault = false;
             try
             {
+                ThreadHelper.ThrowIfNotOnUIThread();
                 var task = ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
                 {
                     IWpfTextView textView = null;

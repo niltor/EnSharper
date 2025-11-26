@@ -1,8 +1,8 @@
+using System;
 using CodeFormatter.Configuration;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
-using System;
 
 namespace CodeFormatter.Services
 {
@@ -45,6 +45,8 @@ namespace CodeFormatter.Services
 
         internal static AlignDialogPage GetAlignOptions(SVsServiceProvider serviceProvider)
         {
+
+            ThreadHelper.ThrowIfNotOnUIThread();
             if (serviceProvider == null)
                 return null;
 

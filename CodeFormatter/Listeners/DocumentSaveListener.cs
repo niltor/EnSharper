@@ -1,11 +1,11 @@
+using System;
+using System.Collections.Generic;
 using CodeFormatter.Services;
 using Microsoft.CodeAnalysis;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
 using Microsoft.VisualStudio.Text.Editor;
-using System;
-using System.Collections.Generic;
 
 namespace CodeFormatter.Listeners
 {
@@ -23,7 +23,6 @@ namespace CodeFormatter.Listeners
         private bool isFormatting = false;
         private readonly Dictionary<string, string> lastFormattedContentByPath =
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
 
         private DocumentSaveListener(SVsServiceProvider serviceProvider)
         {
@@ -151,8 +150,6 @@ namespace CodeFormatter.Listeners
             return VSConstants.S_OK;
         }
 
-
-
         public void Dispose()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
@@ -181,10 +178,6 @@ namespace CodeFormatter.Listeners
             uint dwEditLocksRemaining
         )
         {
-            Logger.LogDebug(
-                "DocumentSaveListener",
-                "OnAfterFirstDocumentLock called - not used"
-            );
             return VSConstants.S_OK;
         }
 
@@ -195,10 +188,6 @@ namespace CodeFormatter.Listeners
             uint dwEditLocksRemaining
         )
         {
-            Logger.LogDebug(
-                "DocumentSaveListener",
-                "OnBeforeLastDocumentUnlock called - not used"
-            );
             return VSConstants.S_OK;
         }
 

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
     <Metadata>
-        <Identity Id="Ater.CodeAlign" Version="0.1.0" Language="en-US" Publisher="niltor" />
+        <Identity Id="Ater.CodeAlign" Version="0.1.1" Language="en-US" Publisher="niltor" />
         <DisplayName>CodeFormatter</DisplayName>
         <Description xml:space="preserve">Csharp code align formatter</Description>
         <MoreInfo>https://github.com/niltor/EnSharper</MoreInfo>
@@ -12,7 +12,7 @@
     </Metadata>
     <Installation>
         <!-- Target Visual Studio 2026+ (18.x) -->
-        <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[18.0, )">
+        <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[18.0,)">
             <ProductArchitecture>amd64</ProductArchitecture>
         </InstallationTarget>
     </Installation>
@@ -20,7 +20,7 @@
         <Dependency Id="Microsoft.Framework.NDP" DisplayName="Microsoft .NET Framework" d:Source="Manual" Version="[4.5,)" />
     </Dependencies>
     <Prerequisites>
-        <Prerequisite Id="Microsoft.VisualStudio.Component.CoreEditor" Version="[18.0, )" DisplayName="Visual Studio core editor" />
+        <Prerequisite Id="Microsoft.VisualStudio.Component.CoreEditor" Version="[18.0,)" DisplayName="Visual Studio core editor" />
     </Prerequisites>
     <Assets>
         <!-- Ensure MEF exports in the assembly are included as a MEF component -->

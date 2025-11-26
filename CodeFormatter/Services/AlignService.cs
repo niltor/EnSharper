@@ -1,19 +1,18 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using CodeFormatter.Configuration;
 using CodeFormatter.Processors;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Formatting;
-using Microsoft.CodeAnalysis.Text;
 using Microsoft.VisualStudio.ComponentModelHost;
 using Microsoft.VisualStudio.Editor;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.TextManager.Interop;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace CodeFormatter.Services
 {
@@ -24,7 +23,6 @@ namespace CodeFormatter.Services
     {
         private readonly AlignmentSettings settings;
         private readonly IReadOnlyList<IAlignmentProcessor> processors;
-
         internal bool IsEnabled => settings.IsEnabled;
 
         /// <summary>
@@ -94,22 +92,49 @@ namespace CodeFormatter.Services
 
                 // 通过 MEF 获取 ITextView
                 var componentModel = (IComponentModel)serviceProvider.GetService(typeof(SComponentModel));
-                var adapterService = componentModel.GetService<IVsEditorAdaptersFactoryService>();
-                textView = adapterService.GetWpfTextView(vsTextView);
-                textView.TextBuffer.Properties.TryGetProperty(typeof(ITextDocument), out ITextDocument textDocument);
+                var adapterService = componentModel?.GetService<IVsEditorAdaptersFactoryService>();
+                textView = adapterService?.GetWpfTextView(vsTextView);
+                if (textView == null)
+                    return null;
 
-                // 通过 MEF 获取 Roslyn Workspace
-                Workspace workspace = componentModel.GetService<Workspace>();
+                if (!textView.TextBuffer.Properties.TryGetProperty(typeof(ITextDocument), out ITextDocument textDocument) || textDocument == null)
+                {
+                    Logger.LogError("DocumentFormatListener.GetActiveTextView", "Failed to get ITextDocument for the active view.");
+                    return null;
+                }
+
+                // 首选从 TextBuffer 的 Properties 获取 Workspace（更可靠）
+                Workspace workspace = null;
+                if (!textView.TextBuffer.Properties.TryGetProperty(typeof(Workspace), out workspace) || workspace == null)
+                {
+                    // 回退到 ComponentModel 获取全局 Workspace，但此调用在某些环境下可能没有导出
+                    try
+                    {
+                        workspace = componentModel?.GetService<Workspace>();
+                    }
+                    catch (Exception)
+                    {
+                        // 可能抛出 CompositionFailedException，当没有可用的 Workspace 导出时
+                        workspace = null;
+                    }
+                }
+
+                if (workspace == null)
+                {
+                    Logger.LogError("DocumentFormatListener.GetActiveTextView", "Failed to get Workspace for the active document.");
+                    return null;
+                }
+
                 var documentId = workspace.CurrentSolution.GetDocumentIdsWithFilePath(textDocument.FilePath)
                     .FirstOrDefault();
 
-                var docment = workspace.CurrentSolution.GetDocument(documentId);
-                if (docment.TryGetText(out SourceText sourceText))
+                if (documentId == null)
                 {
-                    var activeDocumentId = workspace.GetDocumentIdInCurrentContext(sourceText.Container);
-                    return workspace.CurrentSolution.GetDocument(activeDocumentId);
+                    Logger.LogError("DocumentFormatListener.GetActiveTextView", $"No DocumentId found for file path: {textDocument.FilePath}");
+                    return null;
                 }
-                return null;
+
+                return workspace.CurrentSolution.GetDocument(documentId);
             }
             catch (Exception ex)
             {
