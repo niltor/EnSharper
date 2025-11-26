@@ -8,6 +8,10 @@
 
 		<VssdkCompatibleExtension>true</VssdkCompatibleExtension>
 		<EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
+
+		<!-- VSSDK Properties -->
+		<GeneratePkgDefFile>true</GeneratePkgDefFile>
+		<VsixId>CodeAlign.66bb6a15-1595-4aef-82c2-1942274d70d9</VsixId>
 	</PropertyGroup>
 
 	<ItemGroup>
