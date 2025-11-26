@@ -9,9 +9,9 @@ namespace CodeAlign
     /// </summary>
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
     [ProvideAutoLoad(Microsoft.VisualStudio.Shell.Interop.UIContextGuids80.SolutionExists, PackageAutoLoadFlags.BackgroundLoad)]
-    [Guid(CodeFormatterPackage.PackageGuidString)]
+    [Guid(CodeAPackage.PackageGuidString)]
     [ProvideOptionPage(typeof(AlignDialogPage), "Code Align", "General", 0, 0, true, SupportsProfiles = true)]
-    public sealed class CodeFormatterPackage : AsyncPackage
+    public sealed class CodeAPackage : AsyncPackage
     {
         /// <summary>
         /// CodeFormatterPackage GUID string.
@@ -33,7 +33,7 @@ namespace CodeAlign
             {
                 await Logger.InitializeAsync(this);
 
-                Logger.LogInfo(nameof(CodeFormatterPackage), $"Package initialized.");
+                Logger.LogInfo(nameof(CodeAPackage), $"Package initialized.");
             }
             catch (Exception ex)
             {

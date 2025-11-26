@@ -53,14 +53,14 @@ namespace CodeAlign.Services
             if (shell == null)
                 return null;
 
-            var packageGuid = new Guid(CodeFormatterPackage.PackageGuidString);
+            var packageGuid = new Guid(CodeAPackage.PackageGuidString);
             if (shell.IsPackageLoaded(ref packageGuid, out IVsPackage pkg) != VSConstants.S_OK)
             {
                 if (shell.LoadPackage(ref packageGuid, out pkg) != VSConstants.S_OK)
                     return null;
             }
 
-            if (pkg is CodeFormatterPackage package)
+            if (pkg is CodeAPackage package)
             {
                 return package.GetDialogPage(typeof(AlignDialogPage)) as AlignDialogPage;
             }

@@ -35,4 +35,8 @@
 			<DependentUpon>Resources.resx</DependentUpon>
 		</Compile>
 	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include=".vsextension\" />
+	</ItemGroup>
 </Project>
