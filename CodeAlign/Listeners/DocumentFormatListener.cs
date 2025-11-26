@@ -1,11 +1,10 @@
-﻿using System;
-using CodeFormatter.Services;
+﻿using CodeAlign.Services;
 using Microsoft.CodeAnalysis;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Text.Editor;
 using Document = Microsoft.CodeAnalysis.Document;
 
-namespace CodeFormatter.Listeners
+namespace CodeAlign.Listeners
 {
     /// <summary>
     /// Global singleton listener for Format Document keyboard shortcuts.

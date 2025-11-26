@@ -1,6 +1,4 @@
-using System;
-
-namespace CodeFormatter.Configuration
+namespace CodeAlign.Configuration
 {
     /// <summary>
     /// Encapsulates the alignment configuration that is shared between the formatter and processors.

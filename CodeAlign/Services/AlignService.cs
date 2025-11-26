@@ -1,10 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using CodeFormatter.Configuration;
-using CodeFormatter.Processors;
+using CodeAlign.Configuration;
+using CodeAlign.Processors;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Formatting;
 using Microsoft.VisualStudio.ComponentModelHost;
@@ -14,7 +9,7 @@ using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.TextManager.Interop;
 
-namespace CodeFormatter.Services
+namespace CodeAlign.Services
 {
     /// <summary>
     /// Service for aligning code

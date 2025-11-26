@@ -1,10 +1,8 @@
-﻿using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
-using System;
 using System.Diagnostics;
-using System.Threading.Tasks;
 
-namespace CodeFormatter
+namespace CodeAlign
 {
     /// <summary>
     /// Provides logging that writes to the VS Output window pane and ActivityLog.

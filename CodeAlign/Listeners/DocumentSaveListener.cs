@@ -1,13 +1,11 @@
-using System;
-using System.Collections.Generic;
-using CodeFormatter.Services;
+using CodeAlign.Services;
 using Microsoft.CodeAnalysis;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
 using Microsoft.VisualStudio.Text.Editor;
 
-namespace CodeFormatter.Listeners
+namespace CodeAlign.Listeners
 {
     /// <summary>
     /// Global singleton listener for document save events

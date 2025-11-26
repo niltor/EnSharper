@@ -1,6 +1,6 @@
 using Microsoft.CodeAnalysis;
 
-namespace CodeFormatter.Processors
+namespace CodeAlign.Processors
 {
     /// <summary>
     /// Applies a single alignment step to a syntax tree.

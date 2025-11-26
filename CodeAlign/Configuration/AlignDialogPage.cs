@@ -2,7 +2,7 @@ using Microsoft.VisualStudio.Shell;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 
-namespace CodeFormatter.Configuration
+namespace CodeAlign.Configuration
 {
     /// <summary>
     /// Options page for the Code Align extension
@@ -16,17 +16,10 @@ namespace CodeFormatter.Configuration
         [LocDescription("EnablePluginDescription")]
         public bool EnablePlugin { get; set; } = true;
 
-        // FormatOnSave is removed because it conflicts with VS's built-in Format on Save
-        // Users should use Format Document shortcut (Ctrl+K, Ctrl+D) instead
-        // [LocCategory("CategoryGeneral")]
-        // [LocDisplayName("FormatOnSaveDisplayName")]
-        // [LocDescription("FormatOnSaveDescription")]
-        // public bool FormatOnSave { get; set; } = true;
-
         [LocCategory("CategoryAlignment")]
         [LocDisplayName("MaxAlignmentGapDisplayName")]
         [LocDescription("MaxAlignmentGapDescription")]
-        public int MaxAlignmentGap { get; set; } = 50; // ??? 50?????????
+        public int MaxAlignmentGap { get; set; } = 50;
 
         [LocCategory("CategoryAlignment")]
         [LocDisplayName("MaxFileSizeDisplayName")]

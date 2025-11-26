@@ -1,11 +1,8 @@
-﻿using System;
-using System.Runtime.InteropServices;
-using System.Threading;
-using CodeFormatter.Configuration;
+﻿using CodeAlign.Configuration;
 using Microsoft.VisualStudio.Shell;
-using Task = System.Threading.Tasks.Task;
+using System.Runtime.InteropServices;
 
-namespace CodeFormatter
+namespace CodeAlign
 {
     /// <summary>
     /// This is the class that implements the package exposed by this assembly.

@@ -1,9 +1,8 @@
-using Microsoft.CodeAnalysis;
+﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using System;
 
-namespace CodeFormatter.Processors
+namespace CodeAlign.Processors
 {
     /// <summary>
     /// Ensures chained method calls are on separate lines and properly aligned.

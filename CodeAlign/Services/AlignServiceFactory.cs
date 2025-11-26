@@ -1,10 +1,9 @@
-using System;
-using CodeFormatter.Configuration;
+using CodeAlign.Configuration;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
 
-namespace CodeFormatter.Services
+namespace CodeAlign.Services
 {
     /// <summary>
     /// Helper class for creating configured AlignService instances

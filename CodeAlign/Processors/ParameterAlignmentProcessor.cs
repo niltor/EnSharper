@@ -2,7 +2,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace CodeFormatter.Processors
+namespace CodeAlign.Processors
 {
     /// <summary>
     /// Aligns method, constructor, and primary constructor parameters that exceed configured thresholds.
