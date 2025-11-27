@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿// using CodeAlign.Listeners;
+using CodeAlign.Services;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.Extensibility;
 
 namespace CodeAlign
@@ -12,15 +14,38 @@ namespace CodeAlign
         /// <inheritdoc />
         public override ExtensionConfiguration ExtensionConfiguration => new()
         {
-            RequiresInProcessHosting = true,
+            RequiresInProcessHosting = false,
+            Metadata = new(
+                id: "CodeAlign.66bb6a15-1595-4aef-82c2-1942274d70d9",
+                version: this.ExtensionAssemblyVersion,
+                publisherName: "NilTor",
+                displayName: "CodeAlign",
+                description: "VisualStudio.Extensibility Extension for Code Alignment.")
         };
+
+        /*
+        [VisualStudioContribution]
+        public static OutputChannelConfiguration OutputChannel => new()
+        {
+            DisplayName = "CodeAlign",
+        };
+        */
 
         /// <inheritdoc />
         protected override void InitializeServices(IServiceCollection serviceCollection)
         {
             base.InitializeServices(serviceCollection);
-
-            // You can configure dependency injection here by adding services to the serviceCollection.
+            // serviceCollection.AddScoped<DocumentEventListener>();
+            serviceCollection.AddScoped<AlignService>();
         }
+
+        /*
+        /// <inheritdoc />
+        public override void Initialize(ExtensionActivationContext context)
+        {
+            base.Initialize(context);
+            context.RegisterDocumentEventsListener(new DocumentEventListener(this));
+        }
+        */
     }
 }

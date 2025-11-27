@@ -1,94 +1,36 @@
-# GitHub Copilot Instructions for EnSharper
+这是一个VS插件项目，目的是在使用格式化快捷键和文件保存时，进行对齐格式化。
 
-This file provides technical context to help GitHub Copilot better understand the EnSharper codebase and provide more accurate suggestions.
+## 插件说明
 
-## 🛠️ Technology Stack Details
+使用新的`Microsoft.VisualStudio.Extensibility`来开发进程外插件，一切实现都基于这个前提条件。
 
-- **Framework**: .NET Framework 4.7.2 (targeting legacy VS versions)
-- **Language**: C# 7.3 (limited by framework constraints)
-- **IDE Integration**: Visual Studio SDK (VS 2022+ compatible)
-- **Code Analysis**: Roslyn APIs (Microsoft.CodeAnalysis.*)
-- **Component Model**: MEF (Managed Extensibility Framework) for VS service composition
-- **Build System**: MSBuild with VSIX packaging
-- **Threading**: STA (Single-Threaded Apartment) for UI operations
+## 功能描述
 
-## 🏗️ Architecture Deep Dive
+### 插件触发的时机:
 
-### Core Components
-- **AlignService**: Main formatting engine using Roslyn syntax trees
-- **FormattingCoordinator**: Orchestrates formatting operations with workspace management
-- **IAlignmentProcessor**: Interface for pluggable alignment rules
-- **Event Listeners**: VS integration points (commands, saves, editor events)
+1. 用户使用Ctrl+S进行保存时，触发IDE默认的保存时代码清理功能，然后进行对齐格式化。
+2. 用户使用格式化快捷键(默认是Ctrl+K, Ctrl+D，也可能是其他绑定的快捷键)时，触发IDE默认的代码格式化功能，然后进行对齐格式化。
+3. 用户进行代码清理时，会执行一系列的规则，然后进行对齐格式化。
 
-### Key Design Patterns
-- **Singleton Listeners**: Global event handlers for VS lifecycle management
-- **Processor Pipeline**: Chain of responsibility for different alignment rules
-- **Workspace-Aware Formatting**: Respects project .editorconfig and compilation options
-- **Thread Safety**: All UI operations on main thread with `ThreadHelper.ThrowIfNotOnUIThread()`
+### 选项
 
-### Formatting Pipeline
-```
-VS Command/Event → Listener → FormattingCoordinator → AlignService → Processors → TextBuffer Update
-     ↓                    ↓              ↓                ↓            ↓              ↓
-Format Document    BeforeExecute   TryFormat()    FormatCode()   Apply()     CreateEdit()
-Save Event         OnBeforeSave    Workspace       Roslyn Format  Syntax      Apply()
-                                      Resolution   + Alignment    Rewriting   Changes
-```
+需要在工具->选项中，添加一个配置页面，用于配置对齐格式化的选项，包括:
 
-### Workspace Management
-- **Primary**: `textBuffer.Properties[typeof(Workspace)]` - Most accurate
-- **Fallback**: `ComponentModel.GetService<Workspace>()` - Global workspace
-- **Purpose**: Ensures .editorconfig and project settings are respected
+1. 启用/禁用对齐格式化功能的开关。
+2. 参数阈值:
+   - 最大行数: 超过该长度的行不进行对齐格式化。
+   - 方法参数(包含构建方法)个数，超过该个数的才进行对齐格式化。
 
-### Performance Optimizations
-- **Single-Pass Editing**: Avoids multiple `TextBuffer.CreateEdit()` calls
-- **Incremental Processing**: Only processes changed content regions
-- **Early Termination**: Skips formatting when content unchanged
-- **Memory Management**: Proper disposal of Roslyn workspaces
+### Output窗口日志
 
-## 🔧 Development Guidelines
+在Output窗口中，添加一个名为"CodeAlignd"的日志输出，当插件执行对齐格式化时，输出相关的日志信息，主要记录错误以及重要结点的处理情况。
 
-### Code Style
-- Use `ThreadHelper.ThrowIfNotOnUIThread()` for all UI operations
-- Implement `IDisposable` for resources requiring cleanup
-- Use `Logger.LogDebug()` for diagnostics (appears in VS Output window)
-- Follow Roslyn patterns for syntax tree manipulation
+### 对齐格式化规则
 
-### Common Patterns
-```csharp
-// VS Service Access
-var componentModel = serviceProvider.GetService(typeof(SComponentModel)) as IComponentModel;
-var workspace = componentModel.GetService<Workspace>();
+1. 多行变量定义对齐(包含using var)，变量和等号对齐。
+2. 类成员变量对齐，成员变量和等号对齐。不包括属性和方法。
+3. 方法参数对齐，当参数数量超过配置的阈值时，进行对齐格式化(换行并对齐)。
+4. 新类型实例化时的参数对齐(非构建方法)。
+5. 链式调用时的方法对齐，每行一个方法调用，超过两个方法调用时进行对齐格式化。
+6. 字典初始化时的键值对对齐。
 
-// Roslyn Syntax Processing
-var tree = CSharpSyntaxTree.ParseText(code);
-var root = tree.GetRoot();
-var newRoot = rewriter.Visit(root);
-
-// Text Buffer Operations
-using (var edit = textBuffer.CreateEdit())
-{
-    edit.Replace(0, snapshot.Length, newText);
-    edit.Apply();
-}
-```
-
-### Testing Approach
-- Manual testing in VS Experimental Instance
-- Verify with various .editorconfig settings
-- Test multi-file scenarios and concurrent saves
-- Check performance with large codebases
-
-## 📁 Project Structure Reference
-
-```
-CodeFormatter/
-├── Configuration/           # Options pages and settings
-├── Formatting/              # Core formatting engine
-├── Processors/              # Roslyn syntax rewriters
-├── Listeners/               # VS event handlers
-├── CodeFormatterPackage.cs  # VS package entry point
-└── Logger.cs                # Diagnostic logging
-```
-
-This context helps Copilot understand the VS extension architecture, Roslyn integration patterns, and performance considerations for more accurate code suggestions.

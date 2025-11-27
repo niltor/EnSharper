@@ -99,7 +99,7 @@ namespace CodeAlign.Processors
                     var minPropertyPos = propertyPositions.Min();
                     if (maxPropertyPos - minPropertyPos > maxAlignmentGap)
                     {
-                        Logger.LogDebug("ObjectInitializerAlignment", $"Property alignment gap ({maxPropertyPos - minPropertyPos}) exceeds maximum ({maxAlignmentGap}), skipping");
+                        // Property alignment gap exceeds maximum, skipping
                         return initializer;
                     }
                 }

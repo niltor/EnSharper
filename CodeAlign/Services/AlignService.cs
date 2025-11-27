@@ -2,12 +2,7 @@ using CodeAlign.Configuration;
 using CodeAlign.Processors;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Formatting;
-using Microsoft.VisualStudio.ComponentModelHost;
-using Microsoft.VisualStudio.Editor;
-using Microsoft.VisualStudio.Shell;
-using Microsoft.VisualStudio.Text;
-using Microsoft.VisualStudio.Text.Editor;
-using Microsoft.VisualStudio.TextManager.Interop;
+using Microsoft.VisualStudio.Extensibility.Editor;
 
 namespace CodeAlign.Services
 {
@@ -60,6 +55,8 @@ namespace CodeAlign.Services
             }
 
             var root = await document.GetSyntaxRootAsync(cancellationToken);
+            if (root == null) return document;
+
             var alignedRoot = ApplyAlignmentProcessors(root);
             if (alignedRoot == root)
                 return document;
@@ -76,67 +73,6 @@ namespace CodeAlign.Services
                 currentRoot = nextRoot;
             }
             return currentRoot;
-        }
-
-        public static Document GetActiveDocument(SVsServiceProvider serviceProvider, out IWpfTextView textView)
-        {
-            try
-            {
-                var txtMgr = serviceProvider.GetService(typeof(SVsTextManager)) as IVsTextManager;
-                txtMgr.GetActiveView(1, null, out IVsTextView vsTextView);
-
-                // 通过 MEF 获取 ITextView
-                var componentModel = (IComponentModel)serviceProvider.GetService(typeof(SComponentModel));
-                var adapterService = componentModel?.GetService<IVsEditorAdaptersFactoryService>();
-                textView = adapterService?.GetWpfTextView(vsTextView);
-                if (textView == null)
-                    return null;
-
-                if (!textView.TextBuffer.Properties.TryGetProperty(typeof(ITextDocument), out ITextDocument textDocument) || textDocument == null)
-                {
-                    Logger.LogError("DocumentFormatListener.GetActiveTextView", "Failed to get ITextDocument for the active view.");
-                    return null;
-                }
-
-                // 首选从 TextBuffer 的 Properties 获取 Workspace（更可靠）
-                Workspace workspace = null;
-                if (!textView.TextBuffer.Properties.TryGetProperty(typeof(Workspace), out workspace) || workspace == null)
-                {
-                    // 回退到 ComponentModel 获取全局 Workspace，但此调用在某些环境下可能没有导出
-                    try
-                    {
-                        workspace = componentModel?.GetService<Workspace>();
-                    }
-                    catch (Exception)
-                    {
-                        // 可能抛出 CompositionFailedException，当没有可用的 Workspace 导出时
-                        workspace = null;
-                    }
-                }
-
-                if (workspace == null)
-                {
-                    Logger.LogError("DocumentFormatListener.GetActiveTextView", "Failed to get Workspace for the active document.");
-                    return null;
-                }
-
-                var documentId = workspace.CurrentSolution.GetDocumentIdsWithFilePath(textDocument.FilePath)
-                    .FirstOrDefault();
-
-                if (documentId == null)
-                {
-                    Logger.LogError("DocumentFormatListener.GetActiveTextView", $"No DocumentId found for file path: {textDocument.FilePath}");
-                    return null;
-                }
-
-                return workspace.CurrentSolution.GetDocument(documentId);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError("DocumentFormatListener.GetActiveTextView", ex.ToString());
-                textView = null;
-                return null;
-            }
         }
     }
 }

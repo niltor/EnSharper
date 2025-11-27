@@ -227,7 +227,7 @@ namespace CodeAlign.Processors
                     var minTypePos = typePositions.Min();
                     if (maxTypePos - minTypePos > maxAlignmentGap)
                     {
-                        Logger.LogDebug("AlignService", $"Type alignment gap ({maxTypePos - minTypePos}) exceeds maximum ({maxAlignmentGap}), skipping field group");
+                        // Type alignment gap exceeds maximum, skipping field group
                         return new List<MemberDeclarationSyntax>(fields);
                     }
                 }
@@ -248,13 +248,12 @@ namespace CodeAlign.Processors
 
                 var maxVarPos = varPositions.Max();
 
-                // ??????
-                Logger.LogDebug("AlignService", $"Field alignment: types [{typePositions.Min()}-{maxTypePos}], vars [{varPositions.Min()}-{maxVarPos}]");
+                // Field alignment logic
                 for (int i = 0; i < fields.Count; i++)
                 {
                     var field = fields[i];
                     var varName = field.Declaration.Variables.FirstOrDefault()?.Identifier.Text ?? "";
-                    Logger.LogDebug("AlignService", $"  Field {i}: type@{typePositions[i]} var'{varName}'@{varPositions[i]} ? typeSpaces={maxTypePos - typePositions[i]} varSpaces={maxVarPos - varPositions[i]}");
+                    // Debug info omitted
                 }
 
                 var result = new List<MemberDeclarationSyntax>();
@@ -312,7 +311,7 @@ namespace CodeAlign.Processors
                     var minTypePos = typePositions.Min();
                     if (maxTypePos - minTypePos > maxAlignmentGap)
                     {
-                        Logger.LogDebug("AlignService", $"Type alignment gap ({maxTypePos - minTypePos}) exceeds maximum ({maxAlignmentGap}), skipping statement group");
+                        // Type alignment gap exceeds maximum, skipping statement group
                         return statements;
                     }
                 }

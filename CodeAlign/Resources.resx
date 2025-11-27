@@ -106,4 +106,7 @@
   <data name="MethodThresholdDescription" xml:space="preserve">
     <value>Minimum number of method parameters required before aligning them on separate lines.</value>
   </data>
+  <data name="CodeAlign.Commands.AlignCodeCommand.DisplayName" xml:space="preserve">
+    <value>Align Code</value>
+  </data>
 </root>
