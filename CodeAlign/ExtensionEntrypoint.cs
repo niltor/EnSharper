@@ -2,6 +2,7 @@
 using CodeAlign.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.Extensibility;
+using Microsoft.VisualStudio.Extensibility.Documents;
 
 namespace CodeAlign
 {
@@ -31,10 +32,11 @@ namespace CodeAlign
         };
         */
 
-        /// <inheritdoc />
         protected override void InitializeServices(IServiceCollection serviceCollection)
         {
             base.InitializeServices(serviceCollection);
+
+
             // serviceCollection.AddScoped<DocumentEventListener>();
             serviceCollection.AddScoped<AlignService>();
         }

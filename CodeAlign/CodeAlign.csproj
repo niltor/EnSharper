@@ -13,6 +13,10 @@
 	  <Content Remove=".vsextension\**" />
 	  <None Remove=".vsextension\**" />
 	</ItemGroup>
+	<ItemGroup>
+	  <Content Include=".vsextension\string-resources.json" />
+	  <Content Include=".vsextension\zh-Hans\string-resources.json" />
+	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Include="Microsoft.VisualStudio.Extensibility" Version="17.14.2098" />
@@ -20,20 +24,5 @@
 		<PackageReference Include="Microsoft.VisualStudio.Extensibility.Build" Version="17.14.40608" PrivateAssets="all" />
 		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
 		<PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.0.0" />
-	</ItemGroup>
-
-	<ItemGroup>
-		<EmbeddedResource Include="Resources.resx">
-			<Generator>ResXFileCodeGenerator</Generator>
-			<LastGenOutput>Resources.Designer.cs</LastGenOutput>
-		</EmbeddedResource>
-	</ItemGroup>
-
-	<ItemGroup>
-		<Compile Update="Resources.Designer.cs">
-			<AutoGen>True</AutoGen>
-			<DesignTime>True</DesignTime>
-			<DependentUpon>Resources.resx</DependentUpon>
-		</Compile>
 	</ItemGroup>
 </Project>

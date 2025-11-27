@@ -1,0 +1,12 @@
+{
+    "CodeAlign.Commands.AlignCodeCommand.DisplayName": "对齐代码",
+    "CodeAlign.Settings.Category.CodeAlign": "代码对齐",
+    "CodeAlign.Settings.Category.General": "常规",
+    "CodeAlign.Settings.Category.Alignment": "对齐",
+    "CodeAlign.Settings.Category.Parameters": "参数",
+    "CodeAlign.Settings.EnablePlugin.DisplayName": "启用插件",
+    "CodeAlign.Settings.MaxAlignmentGap.DisplayName": "最大对齐间距",
+    "CodeAlign.Settings.MaxFileSizeBytes.DisplayName": "最大文件大小（字节）",
+    "CodeAlign.Settings.ConstructorParameterThreshold.DisplayName": "构造函数参数阈值",
+    "CodeAlign.Settings.MethodParameterThreshold.DisplayName": "方法参数阈值"
+}
