@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
     <Metadata>
-        <Identity Id="Extension1.1e7f9837-683b-4a21-8781-59d160423c5d" Version="1.0" Language="en-US" Publisher="Publisher name" />
-        <DisplayName>Extension1</DisplayName>
-        <Description>VisualStudio.Extensibility Extension with VSSDK Compatibility.</Description>
-        <Preview>true</Preview>
+        <Identity Id="Extension1.1e7f9837-683b-4a21-8781-59d160423c5d" Version="0.1.0" Language="en-US" Publisher="NilTor" />
+        <DisplayName>CodeAlign</DisplayName>
+        <Description xml:space="preserve">Code lign</Description>
+        <Tags>formatter,code align</Tags>
     </Metadata>
     <Installation ExtensionType="VSSDK+VisualStudio.Extensibility">
         <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[17.14,)">
