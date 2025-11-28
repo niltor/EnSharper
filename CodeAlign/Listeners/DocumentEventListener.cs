@@ -1,33 +1,35 @@
-/*
-using CodeAlign.Configuration;
-using CodeAlign.Services;
-using Microsoft.CodeAnalysis;
 using Microsoft.VisualStudio.Extensibility;
-using Microsoft.VisualStudio.Extensibility.Documents;
 using Microsoft.VisualStudio.Extensibility.Editor;
 
-namespace CodeAlign.Listeners
+namespace CodeAlign.Listeners;
+
+internal class DocumentEventListener : ExtensionPart, ITextViewChangedListener, ITextViewOpenClosedListener
 {
-    internal class DocumentEventListener : IDocumentEventsListener
+
+    public DocumentEventListener()
     {
-        private readonly ExtensionEntrypoint _extension;
+    }
 
-        public DocumentEventListener(ExtensionEntrypoint extension)
-        {
-            _extension = extension;
-        }
 
-        public async Task SavedAsync(DocumentEventArgs e, CancellationToken cancellationToken)
-        {
-            // ... implementation ...
-        }
+    public TextViewExtensionConfiguration TextViewExtensionConfiguration => new()
+    {
+        AppliesTo = [DocumentFilter.FromDocumentType("CSharp")],
+    };
 
-        public Task ClosedAsync(DocumentEventArgs e, CancellationToken token) => Task.CompletedTask;
-        public Task HiddenAsync(DocumentEventArgs e, CancellationToken token) => Task.CompletedTask;
-        public Task OpenedAsync(DocumentEventArgs e, CancellationToken token) => Task.CompletedTask;
-        public Task RenamedAsync(RenamedDocumentEventArgs e, CancellationToken token) => Task.CompletedTask;
-        public Task SavingAsync(DocumentEventArgs e, CancellationToken token) => Task.CompletedTask;
-        public Task ShownAsync(DocumentEventArgs e, CancellationToken token) => Task.CompletedTask;
+
+    public Task TextViewClosedAsync(ITextViewSnapshot textView, CancellationToken cancellationToken)
+    {
+        return Task.CompletedTask;
+    }
+
+    public Task TextViewOpenedAsync(ITextViewSnapshot textView, CancellationToken cancellationToken)
+    {
+        return Task.CompletedTask;
+    }
+
+
+    public Task TextViewChangedAsync(TextViewChangedArgs args, CancellationToken cancellationToken)
+    {
+        return Task.CompletedTask;
     }
 }
-*/

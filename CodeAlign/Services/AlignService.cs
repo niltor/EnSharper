@@ -2,7 +2,6 @@ using CodeAlign.Configuration;
 using CodeAlign.Processors;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Formatting;
-using Microsoft.VisualStudio.Extensibility.Editor;
 
 namespace CodeAlign.Services
 {
@@ -37,17 +36,20 @@ namespace CodeAlign.Services
 
         private static IReadOnlyList<IAlignmentProcessor> CreateDefaultProcessors(AlignmentSettings settings)
         {
-            return new IAlignmentProcessor[]
-            {
+            return
+            [
                 new ParameterAlignmentProcessor(settings.ConstructorParameterThreshold, settings.MethodParameterThreshold),
                 new ArgumentAlignmentProcessor(settings.MethodParameterThreshold),
                 new AssignmentAlignmentProcessor(settings.MaxAlignmentGap),
                 new ObjectInitializerAlignmentProcessor(settings.MaxAlignmentGap),
                 new ChainedMethodAlignmentProcessor()
-            };
+            ];
         }
 
-        public async Task<Document> FormatDocumentAsync(Document document, bool skipRoslynFormatting = true, CancellationToken cancellationToken = default)
+        public async Task<Document> FormatDocumentAsync(
+            Document document,
+            bool skipRoslynFormatting = true,
+            CancellationToken cancellationToken = default)
         {
             if (!skipRoslynFormatting)
             {
@@ -58,6 +60,7 @@ namespace CodeAlign.Services
             if (root == null) return document;
 
             var alignedRoot = ApplyAlignmentProcessors(root);
+
             if (alignedRoot == root)
                 return document;
 
