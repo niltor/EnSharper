@@ -1,16 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
     <Metadata>
-        <Identity Id="Extension1.1e7f9837-683b-4a21-8781-59d160423c5d" Version="0.1.0" Language="en-US" Publisher="NilTor" />
+        <Identity Id="CodeAlign.1e7f9837-683b-4a21-8781-59d160423c5d" Version="0.1.5" Language="en-US" Publisher="NilTor" />
         <DisplayName>CodeAlign</DisplayName>
-        <Description xml:space="preserve">Code lign</Description>
+        <Description xml:space="preserve">Code Align</Description>
+        <MoreInfo>https://github.com/niltor/EnSharper</MoreInfo>
+        <Icon>logo.jpg</Icon>
+        <PreviewImage>sample.png</PreviewImage>
         <Tags>formatter,code align</Tags>
     </Metadata>
     <Installation ExtensionType="VSSDK+VisualStudio.Extensibility">
-        <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[17.14,)">
+        <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[18.0,)">
             <ProductArchitecture>amd64</ProductArchitecture>
         </InstallationTarget>
-        <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[17.14,)">
+        <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[18.0,)">
             <ProductArchitecture>arm64</ProductArchitecture>
         </InstallationTarget>
     </Installation>
@@ -18,9 +21,9 @@
         <Dependency Id="Microsoft.Framework.NDP" DisplayName="Microsoft .NET Framework" d:Source="Manual" Version="[4.5,)" />
     </Dependencies>
     <Prerequisites>
-        <Prerequisite Id="Microsoft.VisualStudio.Component.CoreEditor" Version="[17.0,)" DisplayName="Visual Studio core editor" />
+        <Prerequisite Id="Microsoft.VisualStudio.Component.CoreEditor" Version="[18.0,)" DisplayName="Visual Studio core editor" />
     </Prerequisites>
-    <!--<Assets>
+    <Assets>
         <Asset Type="Microsoft.VisualStudio.VsPackage" d:Source="Project" d:ProjectName="%CurrentProject%" Path="|%CurrentProject%;PkgdefProjectOutputGroup|" />
-    </Assets>-->
+    </Assets>
 </PackageManifest>

@@ -49,9 +49,9 @@ namespace CodeAlign.Processors
                 // Check if this invocation is part of a chain
                 if (node.Expression is MemberAccessExpressionSyntax)
                 {
-                    var chainLength = CountChainDepth(node.Expression);
+                    var methodCallCount = CountMethodCallsInChain(node.Expression);
 
-                    if (chainLength >= minChainLength && !AreChainCallsOnSeparateLines(node.Expression))
+                    if (methodCallCount >= minChainLength && !AreMethodCallsOnSeparateLines(node.Expression))
                     {
                         // Format the chain
                         var indentation = DetectIndentation(node);
@@ -99,36 +99,45 @@ namespace CodeAlign.Processors
                 return false;
             }
 
-            private int CountChainDepth(SyntaxNode node)
+            private int CountMethodCallsInChain(ExpressionSyntax expression)
             {
                 int count = 0;
-                var current = node;
+                var current = expression;
 
                 while (current is MemberAccessExpressionSyntax memberAccess)
                 {
-                    count++;
+                    // Only count if this member access is followed by an invocation
+                    if (memberAccess.Parent is InvocationExpressionSyntax)
+                    {
+                        count++;
+                    }
                     current = memberAccess.Expression;
                 }
 
                 return count;
             }
 
-            private bool AreChainCallsOnSeparateLines(SyntaxNode node)
+            private bool AreMethodCallsOnSeparateLines(ExpressionSyntax expression)
             {
                 int? previousLine = null;
-                var current = node;
+                var current = expression;
 
                 while (current is MemberAccessExpressionSyntax memberAccess)
                 {
-                    var nameLineSpan = memberAccess.Name.GetLocation().GetLineSpan();
-                    int currentLine = nameLineSpan.StartLinePosition.Line;
-
-                    if (previousLine != null && currentLine == previousLine)
+                    // Only check lines for actual method calls
+                    if (memberAccess.Parent is InvocationExpressionSyntax)
                     {
-                        return false;
+                        var nameLineSpan = memberAccess.Name.GetLocation().GetLineSpan();
+                        int currentLine = nameLineSpan.StartLinePosition.Line;
+
+                        if (previousLine != null && currentLine == previousLine)
+                        {
+                            return false;
+                        }
+
+                        previousLine = currentLine;
                     }
 
-                    previousLine = currentLine;
                     current = memberAccess.Expression;
                 }
 
@@ -189,24 +198,33 @@ namespace CodeAlign.Processors
                     // Recursively format the left side
                     var formattedExpression = FormatMemberAccessChain(memberAccess.Expression, indentation);
 
-                    // Add line break and indentation before the dot operator
-                    // Use Environment.NewLine to respect platform line ending convention
-                    var operatorToken = memberAccess.OperatorToken
-                        .WithLeadingTrivia(
-                            SyntaxFactory.TriviaList(
-                                SyntaxFactory.EndOfLine(Environment.NewLine),
-                                SyntaxFactory.Whitespace(indentation)
+                    // Only add line break if this member access is followed by an invocation (i.e., it's a method call)
+                    if (memberAccess.Parent is InvocationExpressionSyntax)
+                    {
+                        // Add line break and indentation before the dot operator for method calls
+                        var operatorToken = memberAccess.OperatorToken
+                            .WithLeadingTrivia(
+                                SyntaxFactory.TriviaList(
+                                    SyntaxFactory.EndOfLine(Environment.NewLine),
+                                    SyntaxFactory.Whitespace(indentation)
+                                )
                             )
-                        )
-                        .WithTrailingTrivia(SyntaxFactory.TriviaList());
+                            .WithTrailingTrivia(SyntaxFactory.TriviaList());
 
-                    // Remove leading trivia from the name
-                    var name = memberAccess.Name.WithLeadingTrivia(SyntaxFactory.TriviaList());
+                        // Remove leading trivia from the name
+                        var name = memberAccess.Name.WithLeadingTrivia(SyntaxFactory.TriviaList());
 
-                    return memberAccess
-                        .WithExpression(formattedExpression)
-                        .WithOperatorToken(operatorToken)
-                        .WithName(name);
+                        return memberAccess
+                            .WithExpression(formattedExpression)
+                            .WithOperatorToken(operatorToken)
+                            .WithName(name);
+                    }
+                    else
+                    {
+                        // For property/field access, don't add line breaks, just keep it on the same line
+                        return memberAccess
+                            .WithExpression(formattedExpression);
+                    }
                 }
 
                 return expression;

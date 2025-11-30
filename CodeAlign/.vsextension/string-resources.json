@@ -1,12 +1,13 @@
 {
-    "CodeAlign.Commands.AlignCodeCommand.DisplayName": "Align Code",
-    "CodeAlign.Settings.Category.CodeAlign": "Code Align",
-    "CodeAlign.Settings.Category.General": "General",
-    "CodeAlign.Settings.Category.Alignment": "Alignment",
-    "CodeAlign.Settings.Category.Parameters": "Parameters",
-    "CodeAlign.Settings.EnablePlugin.DisplayName": "Enable Plugin",
-    "CodeAlign.Settings.MaxAlignmentGap.DisplayName": "Max Alignment Gap",
-    "CodeAlign.Settings.MaxFileSizeBytes.DisplayName": "Max File Size (bytes)",
-    "CodeAlign.Settings.ConstructorParameterThreshold.DisplayName": "Constructor Parameter Threshold",
-    "CodeAlign.Settings.MethodParameterThreshold.DisplayName": "Method Parameter Threshold"
+  "CodeAlign.Commands.SaveCommand.DisplayName": "Save Code",
+  "CodeAlign.Commands.FormatCommand.DisplayName": "Format Code",
+  "CodeAlign.Settings.Category.CodeAlign": "Code Align",
+  "CodeAlign.Settings.Category.General": "General",
+  "CodeAlign.Settings.Category.Alignment": "Alignment",
+  "CodeAlign.Settings.Category.Parameters": "Parameters",
+  "CodeAlign.Settings.EnablePlugin.DisplayName": "Enable Plugin",
+  "CodeAlign.Settings.MaxAlignmentGap.DisplayName": "Max Alignment Gap",
+  "CodeAlign.Settings.MaxFileSizeBytes.DisplayName": "Max File Size (bytes)",
+  "CodeAlign.Settings.ConstructorParameterThreshold.DisplayName": "Constructor Parameter Threshold",
+  "CodeAlign.Settings.MethodParameterThreshold.DisplayName": "Method Parameter Threshold"
 }

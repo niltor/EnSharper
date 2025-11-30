@@ -3,6 +3,7 @@ using CodeAlign.Services;
 using EnvDTE;
 using EnvDTE80;
 using Microsoft.CodeAnalysis;
+using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.ComponentModelHost;
 using Microsoft.VisualStudio.Extensibility;
 using Microsoft.VisualStudio.Extensibility.Commands;
@@ -16,7 +17,7 @@ using Command = Microsoft.VisualStudio.Extensibility.Commands.Command;
 
 namespace CodeAlign.Commands;
 
-[VisualStudioContribution]
+//[VisualStudioContribution]
 internal class FormatCommand : Command
 {
     private OutputChannel OutputChannel { get; set; } = default!;
@@ -33,14 +34,15 @@ internal class FormatCommand : Command
         _dteInjection = dteInjection;
     }
 
-    public override CommandConfiguration CommandConfiguration => new("%CodeAlign.Commands.AlignCodeCommand.DisplayName%")
+    public override CommandConfiguration CommandConfiguration => new("FormatCommand")
     {
         VisibleWhen = ActivationConstraint.ClientContext(ClientContextKey.Shell.ActiveSelectionFileName, @"\.(cs)$"),
         EnabledWhen = ActivationConstraint.ClientContext(ClientContextKey.Shell.ActiveSelectionFileName, @"\.(cs)$"),
         Shortcuts =
         [
             new (ModifierKey.ShiftLeftAlt,Key.F)
-        ]
+        ],
+        VsctCommandMapping = new VsctId(new Guid(VSConstants.CMDSETID.StandardCommandSet2K_string), (((uint)VSConstants.VSStd2KCmdID.FORMATDOCUMENT)))
     };
 
 

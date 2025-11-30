@@ -32,18 +32,26 @@ internal class SaveCommand : Command
     {
         _componentModelInjection = componentModelInjection;
         _dteInjection = dteInjection;
+        DisableDuringExecution = true;
     }
 
-    public override CommandConfiguration CommandConfiguration => new("%CodeAlign.Commands.AlignCodeCommand.DisplayName%")
+    public override CommandConfiguration CommandConfiguration => new("%CodeAlign.Commands.SaveCommand.DisplayName%")
     {
-        VisibleWhen = ActivationConstraint.ClientContext(ClientContextKey.Shell.ActiveSelectionFileName, @"\.(cs)$"),
-        EnabledWhen = ActivationConstraint.ClientContext(ClientContextKey.Shell.ActiveSelectionFileName, @"\.(cs)$"),
+        Placements =
+        [
+            CommandPlacement.KnownPlacements.ExtensionsMenu.WithPriority(1),
+        ],
+        VisibleWhen = ActivationConstraint.ClientContext(ClientContextKey.Shell.ActiveEditorFileName, @"\.(cs)$"),
+        EnabledWhen = ActivationConstraint.ClientContext(ClientContextKey.Shell.ActiveEditorFileName, @"\.(cs)$"),
         Shortcuts =
         [
-            new(ModifierKey.Control, Key.S),
-        ]
-    };
+            //new(ModifierKey.Control, Key.S),
+            new (ModifierKey.ControlShift, Key.J),
+            //new (ModifierKey.ShiftLeftAlt, Key.F)
 
+        ],
+        //VsctCommandMapping = new VsctId(new Guid(VSConstants.CMDSETID.StandardCommandSet2K_string), (((uint)VSConstants.VSStd2KCmdID.FORMATDOCUMENT)))
+    };
 
     public override async Task InitializeAsync(CancellationToken cancellationToken)
     {
@@ -75,10 +83,6 @@ internal class SaveCommand : Command
                 return;
             }
 
-            var componentModel = await _componentModelInjection.GetServiceAsync();
-            var workspace = componentModel.GetService<VisualStudioWorkspace>();
-            if (workspace == null) return;
-
             var textView = await context.GetActiveTextViewAsync(cancellationToken);
             if (textView == null)
             {
@@ -86,6 +90,15 @@ internal class SaveCommand : Command
                 return;
             }
             var filePath = textView.Document.Uri.LocalPath;
+            if (!filePath.EndsWith(".cs"))
+            {
+                await OutputChannel.LogInfoAsync("Skip non-C# file");
+                return;
+            }
+
+            var componentModel = await _componentModelInjection.GetServiceAsync();
+            var workspace = componentModel.GetService<VisualStudioWorkspace>();
+            if (workspace == null) return;
 
             var documentId = workspace.CurrentSolution.GetDocumentIdsWithFilePath(filePath)
                 .FirstOrDefault();
@@ -110,6 +123,7 @@ internal class SaveCommand : Command
 
             if (!changes.Any())
             {
+                await OutputChannel.LogInfoAsync("codes has no changes");
                 return;
             }
 
@@ -132,11 +146,11 @@ internal class SaveCommand : Command
                 }
             }, cancellationToken);
 
-
-
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
             var dte = await _dteInjection.GetServiceAsync();
             dte.ActiveDocument?.Save();
+
+            await OutputChannel.LogInfoAsync("Formatted code saved!");
 
         }
         catch (Exception ex)
