@@ -103,7 +103,7 @@ internal class FormatCommand : Command
             var ctorThresh = settingsResult.ValueOrDefault(AlignmentOptions.ConstructorParameterThreshold, 3);
             var methodThresh = settingsResult.ValueOrDefault(AlignmentOptions.MethodParameterThreshold, 4);
 
-            var alignSettings = new AlignmentSettings(enable, maxFileSize, maxGap, ctorThresh, methodThresh);
+            var alignSettings = new AlignmentSettings(maxFileSize, maxGap, ctorThresh, methodThresh);
             var alignService = new AlignService(alignSettings);
 
             var formattedDocument = await alignService.FormatDocumentAsync(document, false, cancellationToken);

@@ -12,7 +12,6 @@ namespace CodeAlign.Services
     {
         private readonly AlignmentSettings settings;
         private readonly IReadOnlyList<IAlignmentProcessor> processors;
-        internal bool IsEnabled => settings.IsEnabled;
 
         /// <summary>
         /// Initializes a new instance of AlignService with default settings
