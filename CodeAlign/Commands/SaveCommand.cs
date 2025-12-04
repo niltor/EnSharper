@@ -11,6 +11,7 @@ using Microsoft.VisualStudio.Extensibility.Editor;
 using Microsoft.VisualStudio.Extensibility.VSSdkCompatibility;
 using Microsoft.VisualStudio.LanguageServices;
 using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Shell.Interop;
 using Command = Microsoft.VisualStudio.Extensibility.Commands.Command;
 
 #pragma warning disable VSEXTPREVIEW_OUTPUTWINDOW // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
@@ -23,6 +24,11 @@ internal class SaveCommand : Command
     private OutputChannel OutputChannel { get; set; } = default!;
     private readonly AsyncServiceProviderInjection<DTE, DTE2> _dteInjection;
     private readonly AsyncServiceProviderInjection<SComponentModel, IComponentModel> _componentModelInjection;
+
+    // 记录 cookie 以便后续注销监听
+    private uint _rdtCookie;
+    private IVsRunningDocumentTable? _rdt;
+    private RdtSaveListener? _listener;
 
     public SaveCommand(
         VisualStudioExtensibility extensibility,
@@ -45,9 +51,7 @@ internal class SaveCommand : Command
         EnabledWhen = ActivationConstraint.ClientContext(ClientContextKey.Shell.ActiveEditorFileName, @"\.(cs)$"),
         Shortcuts =
         [
-            //new(ModifierKey.Control, Key.S),
             new (ModifierKey.ControlShift, Key.J),
-            //new (ModifierKey.ShiftLeftAlt, Key.F)
 
         ],
         //VsctCommandMapping = new VsctId(new Guid(VSConstants.CMDSETID.StandardCommandSet2K_string), (((uint)VSConstants.VSStd2KCmdID.FORMATDOCUMENT)))
@@ -56,8 +60,24 @@ internal class SaveCommand : Command
     public override async Task InitializeAsync(CancellationToken cancellationToken)
     {
         string displayName = "CodeAlign";
-        // To use this Output window Channel elsewhere in the class, such as the ExecuteCommandAsync() method in a Command, save this result to a field in the class.
-        OutputChannel = await Extensibility.Views().Output.CreateOutputChannelAsync(displayName, cancellationToken);
+        OutputChannel = await Extensibility.Views().Output
+            .CreateOutputChannelAsync(displayName, cancellationToken);
+
+        await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
+
+        var componentModel = await _componentModelInjection.GetServiceAsync();
+        var rdt = componentModel.GetService<SVsRunningDocumentTable>() as IVsRunningDocumentTable;
+        if (rdt != null)
+        {
+            _listener = new RdtSaveListener(OutputChannel);
+            rdt.AdviseRunningDocTableEvents(_listener, out _rdtCookie);
+            await OutputChannel.WriteLineAsync("RDT 保存事件监听已注册");
+        }
+        else
+        {
+            await OutputChannel.WriteLineAsync("RDT 服务获取失败，无法拦截文档保存");
+        }
+
     }
 
     /// <inheritdoc />
@@ -157,5 +177,15 @@ internal class SaveCommand : Command
         {
             await OutputChannel.LogInfoAsync(ex.ToString());
         }
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (_rdt != null && _rdtCookie != 0)
+        {
+            _rdt.UnadviseRunningDocTableEvents(_rdtCookie);
+            _rdtCookie = 0;
+        }
+        base.Dispose(disposing);
     }
 }
