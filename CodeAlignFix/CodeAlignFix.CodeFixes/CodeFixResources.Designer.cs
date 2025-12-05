@@ -70,13 +70,57 @@ namespace CodeAlignFix
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Make uppercase.
+        ///   Looks up a localized string similar to Align assignments.
         /// </summary>
-        internal static string CodeFixTitle
+        internal static string AlignAssignmentsCodeFixTitle
         {
             get
             {
-                return ResourceManager.GetString("CodeFixTitle", resourceCulture);
+                return ResourceManager.GetString("AlignAssignmentsCodeFixTitle", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Align object initializer.
+        /// </summary>
+        internal static string AlignObjectInitializerCodeFixTitle
+        {
+            get
+            {
+                return ResourceManager.GetString("AlignObjectInitializerCodeFixTitle", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Align parameters.
+        /// </summary>
+        internal static string AlignParametersCodeFixTitle
+        {
+            get
+            {
+                return ResourceManager.GetString("AlignParametersCodeFixTitle", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Align arguments.
+        /// </summary>
+        internal static string AlignArgumentsCodeFixTitle
+        {
+            get
+            {
+                return ResourceManager.GetString("AlignArgumentsCodeFixTitle", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Align chained methods.
+        /// </summary>
+        internal static string AlignChainedMethodsCodeFixTitle
+        {
+            get
+            {
+                return ResourceManager.GetString("AlignChainedMethodsCodeFixTitle", resourceCulture);
             }
         }
     }

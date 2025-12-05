@@ -9,51 +9,249 @@ namespace CodeAlignFix.Test
     [TestClass]
     public class CodeAlignFixUnitTest
     {
-        //No diagnostics expected to show up
         [TestMethod]
-        public async Task TestMethod1()
+        public async Task TestEmptyCode()
         {
             var test = @"";
-
             await VerifyCS.VerifyAnalyzerAsync(test);
         }
 
-        //Diagnostic and CodeFix both triggered and checked for
         [TestMethod]
-        public async Task TestMethod2()
+        public async Task TestAssignmentAlignment_LocalVariables()
         {
             var test = @"
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Text;
-    using System.Threading.Tasks;
-    using System.Diagnostics;
+using System;
 
-    namespace ConsoleApplication1
+namespace TestNamespace
+{
+    class TestClass
     {
-        class {|#0:TypeName|}
-        {   
+        void TestMethod()
+        {
+            {|#0:int x = 5;|}
+            string name = ""test"";
+            var value = 100;
         }
-    }";
+    }
+}";
 
-            var fixtest = @"
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Text;
-    using System.Threading.Tasks;
-    using System.Diagnostics;
+            var fixedTest = @"
+using System;
 
-    namespace ConsoleApplication1
+namespace TestNamespace
+{
+    class TestClass
     {
-        class TYPENAME
-        {   
+        void TestMethod()
+        {
+            int    x     = 5;
+            string name  = ""test"";
+            var    value = 100;
         }
-    }";
+    }
+}";
 
-            var expected = VerifyCS.Diagnostic("CodeAlignFix").WithLocation(0).WithArguments("TypeName");
-            await VerifyCS.VerifyCodeFixAsync(test, expected, fixtest);
+            var expected = VerifyCS.Diagnostic(CodeAlignFixAnalyzer.AssignmentAlignmentId).WithLocation(0);
+            await VerifyCS.VerifyCodeFixAsync(test, expected, fixedTest);
+        }
+
+        [TestMethod]
+        public async Task TestAssignmentAlignment_Fields()
+        {
+            var test = @"
+using System;
+
+namespace TestNamespace
+{
+    class TestClass
+    {
+        {|#0:private readonly string _name = ""test"";|}
+        private readonly int _value = 100;
+        private readonly double _price = 99.99;
+    }
+}";
+
+            var fixedTest = @"
+using System;
+
+namespace TestNamespace
+{
+    class TestClass
+    {
+        private readonly string _name  = ""test"";
+        private readonly int    _value = 100;
+        private readonly double _price = 99.99;
+    }
+}";
+
+            var expected = VerifyCS.Diagnostic(CodeAlignFixAnalyzer.AssignmentAlignmentId).WithLocation(0);
+            await VerifyCS.VerifyCodeFixAsync(test, expected, fixedTest);
+        }
+
+        [TestMethod]
+        public async Task TestObjectInitializerAlignment()
+        {
+            var test = @"
+using System;
+
+namespace TestNamespace
+{
+    class Person
+    {
+        public string Name { get; set; }
+        public int Age { get; set; }
+        public string Address { get; set; }
+    }
+
+    class TestClass
+    {
+        void TestMethod()
+        {
+            var person = new Person
+            {|#0:{
+                Name = ""John"",
+                Age = 30,
+                Address = ""123 Main St""
+            }|};
+        }
+    }
+}";
+
+            var fixedTest = @"
+using System;
+
+namespace TestNamespace
+{
+    class Person
+    {
+        public string Name { get; set; }
+        public int Age { get; set; }
+        public string Address { get; set; }
+    }
+
+    class TestClass
+    {
+        void TestMethod()
+        {
+            var person = new Person
+            {
+                Name    = ""John"",
+                Age     = 30,
+                Address = ""123 Main St""
+            };
+        }
+    }
+}";
+
+            var expected = VerifyCS.Diagnostic(CodeAlignFixAnalyzer.ObjectInitializerAlignmentId).WithLocation(0);
+            await VerifyCS.VerifyCodeFixAsync(test, expected, fixedTest);
+        }
+
+        [TestMethod]
+        public async Task TestParameterAlignment_Method()
+        {
+            var test = @"
+using System;
+
+namespace TestNamespace
+{
+    class TestClass
+    {
+        void TestMethod{|#0:(int a, string b, bool c, double d)|}
+        {
+        }
+    }
+}";
+
+            // Just verify diagnostic is reported
+            var expected = VerifyCS.Diagnostic(CodeAlignFixAnalyzer.ParameterAlignmentId).WithLocation(0);
+            await VerifyCS.VerifyAnalyzerAsync(test, expected);
+        }
+
+        [TestMethod]
+        public async Task TestParameterAlignment_Constructor()
+        {
+            var test = @"
+using System;
+
+namespace TestNamespace
+{
+    class TestClass
+    {
+        public TestClass{|#0:(int a, string b, bool c)|}
+        {
+        }
+    }
+}";
+
+            // Just verify diagnostic is reported
+            var expected = VerifyCS.Diagnostic(CodeAlignFixAnalyzer.ParameterAlignmentId).WithLocation(0);
+            await VerifyCS.VerifyAnalyzerAsync(test, expected);
+        }
+
+        [TestMethod]
+        public async Task TestArgumentAlignment()
+        {
+            var test = @"
+using System;
+
+namespace TestNamespace
+{
+    class TestClass
+    {
+        void TestMethod()
+        {
+            Console.WriteLine{|#0:(""a"", ""b"", ""c"", ""d"")|};
+        }
+    }
+}";
+
+            // Just verify the diagnostic is reported
+            var expected = VerifyCS.Diagnostic(CodeAlignFixAnalyzer.ArgumentAlignmentId).WithLocation(0);
+            await VerifyCS.VerifyAnalyzerAsync(test, expected);
+        }
+
+        [TestMethod]
+        public async Task TestChainedMethodAlignment()
+        {
+            var test = @"
+using System;
+using System.Linq;
+
+namespace TestNamespace
+{
+    class TestClass
+    {
+        void TestMethod()
+        {
+            var result = {|#0:new[] { 1, 2, 3 }.Where(x => x > 1).Select(x => x * 2).ToList()|};
+        }
+    }
+}";
+
+            // Chained method detection in method bodies - should trigger diagnostic
+            var expected = VerifyCS.Diagnostic(CodeAlignFixAnalyzer.ChainedMethodAlignmentId).WithLocation(0);
+            await VerifyCS.VerifyAnalyzerAsync(test, expected);
+        }
+
+        [TestMethod]
+        public async Task TestNoAlignmentNeeded_SingleVariable()
+        {
+            var test = @"
+using System;
+
+namespace TestNamespace
+{
+    class TestClass
+    {
+        void TestMethod()
+        {
+            int x = 5;
+        }
+    }
+}";
+
+            await VerifyCS.VerifyAnalyzerAsync(test);
         }
     }
 }

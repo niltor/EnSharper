@@ -1,0 +1,93 @@
+# EditorConfig is awesome: https://EditorConfig.org
+
+# top-most EditorConfig file
+root = true
+
+# All files
+[*]
+charset = utf-8
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# C# files
+[*.cs]
+
+#### CodeAlignFix Analyzer Rules ####
+
+# Assignment Alignment (CAF001)
+# Aligns consecutive variable declarations and field assignments
+dotnet_diagnostic.CAF001.severity = suggestion
+
+# Object Initializer Alignment (CAF002)
+# Aligns properties in object initializers
+dotnet_diagnostic.CAF002.severity = suggestion
+
+# Parameter Alignment (CAF003)
+# Aligns method and constructor parameters on separate lines
+dotnet_diagnostic.CAF003.severity = suggestion
+
+# Argument Alignment (CAF004)
+# Aligns method invocation arguments on separate lines
+dotnet_diagnostic.CAF004.severity = suggestion
+
+# Chained Method Alignment (CAF005)
+# Aligns chained method calls on separate lines
+dotnet_diagnostic.CAF005.severity = suggestion
+
+#### CodeAlignFix Configuration Options ####
+
+# Maximum gap allowed for type alignment
+# Default: 50
+# When the difference in type/variable name lengths exceeds this value,
+# the group won't be aligned to avoid excessive whitespace
+code_align_max_alignment_gap = 50
+
+# Constructor parameter threshold
+# Default: 3
+# Parameters will be aligned (one per line) when count >= this value
+code_align_constructor_parameter_threshold = 3
+
+# Method parameter threshold
+# Default: 4
+# Parameters will be aligned (one per line) when count >= this value
+code_align_method_parameter_threshold = 4
+
+# Argument threshold
+# Default: 4
+# Arguments will be aligned (one per line) when count >= this value
+code_align_argument_threshold = 4
+
+# Minimum chain length
+# Default: 2
+# Method chains will be aligned when the number of chained calls >= this value
+code_align_min_chain_length = 2
+
+#### Example Usage Scenarios ####
+
+## Scenario 1: Strict alignment - enforce all rules
+# dotnet_diagnostic.CAF001.severity = warning
+# dotnet_diagnostic.CAF002.severity = warning
+# dotnet_diagnostic.CAF003.severity = warning
+# dotnet_diagnostic.CAF004.severity = warning
+# dotnet_diagnostic.CAF005.severity = warning
+
+## Scenario 2: Minimal alignment - only assignments and initializers
+# dotnet_diagnostic.CAF001.severity = suggestion
+# dotnet_diagnostic.CAF002.severity = suggestion
+# dotnet_diagnostic.CAF003.severity = none
+# dotnet_diagnostic.CAF004.severity = none
+# dotnet_diagnostic.CAF005.severity = none
+
+## Scenario 3: Relaxed thresholds for smaller projects
+# code_align_constructor_parameter_threshold = 5
+# code_align_method_parameter_threshold = 6
+# code_align_argument_threshold = 6
+# code_align_min_chain_length = 3
+
+## Scenario 4: Disable alignment for test files
+# [*Tests.cs]
+# dotnet_diagnostic.CAF001.severity = none
+# dotnet_diagnostic.CAF002.severity = none
+# dotnet_diagnostic.CAF003.severity = none
+# dotnet_diagnostic.CAF004.severity = none
+# dotnet_diagnostic.CAF005.severity = none

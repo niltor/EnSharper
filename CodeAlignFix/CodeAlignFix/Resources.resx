@@ -117,16 +117,73 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="AnalyzerDescription" xml:space="preserve">
-    <value>Type names should be all uppercase.</value>
-    <comment>An optional longer localizable description of the diagnostic.</comment>
+  <!-- Assignment Alignment -->
+  <data name="AssignmentAlignmentTitle" xml:space="preserve">
+    <value>Align assignment operators</value>
+    <comment>The title of the assignment alignment diagnostic.</comment>
   </data>
-  <data name="AnalyzerMessageFormat" xml:space="preserve">
-    <value>Type name '{0}' contains lowercase letters</value>
-    <comment>The format-able message the diagnostic displays.</comment>
+  <data name="AssignmentAlignmentMessageFormat" xml:space="preserve">
+    <value>Consecutive assignments can be aligned</value>
+    <comment>The format-able message for assignment alignment.</comment>
   </data>
-  <data name="AnalyzerTitle" xml:space="preserve">
-    <value>Type name contains lowercase letters</value>
-    <comment>The title of the diagnostic.</comment>
+  <data name="AssignmentAlignmentDescription" xml:space="preserve">
+    <value>Aligns assignment operators in consecutive variable declarations and field assignments.</value>
+    <comment>Description for assignment alignment.</comment>
+  </data>
+  
+  <!-- Object Initializer Alignment -->
+  <data name="ObjectInitializerAlignmentTitle" xml:space="preserve">
+    <value>Align object initializer properties</value>
+    <comment>The title of the object initializer alignment diagnostic.</comment>
+  </data>
+  <data name="ObjectInitializerAlignmentMessageFormat" xml:space="preserve">
+    <value>Object initializer properties can be aligned</value>
+    <comment>The format-able message for object initializer alignment.</comment>
+  </data>
+  <data name="ObjectInitializerAlignmentDescription" xml:space="preserve">
+    <value>Aligns assignment operators in object initializer expressions.</value>
+    <comment>Description for object initializer alignment.</comment>
+  </data>
+  
+  <!-- Parameter Alignment -->
+  <data name="ParameterAlignmentTitle" xml:space="preserve">
+    <value>Align method parameters</value>
+    <comment>The title of the parameter alignment diagnostic.</comment>
+  </data>
+  <data name="ParameterAlignmentMessageFormat" xml:space="preserve">
+    <value>Method parameters should be aligned (one per line)</value>
+    <comment>The format-able message for parameter alignment.</comment>
+  </data>
+  <data name="ParameterAlignmentDescription" xml:space="preserve">
+    <value>Ensures method and constructor parameters are placed on separate lines when count exceeds threshold.</value>
+    <comment>Description for parameter alignment.</comment>
+  </data>
+  
+  <!-- Argument Alignment -->
+  <data name="ArgumentAlignmentTitle" xml:space="preserve">
+    <value>Align method arguments</value>
+    <comment>The title of the argument alignment diagnostic.</comment>
+  </data>
+  <data name="ArgumentAlignmentMessageFormat" xml:space="preserve">
+    <value>Method arguments should be aligned (one per line)</value>
+    <comment>The format-able message for argument alignment.</comment>
+  </data>
+  <data name="ArgumentAlignmentDescription" xml:space="preserve">
+    <value>Ensures method invocation arguments are placed on separate lines when count exceeds threshold.</value>
+    <comment>Description for argument alignment.</comment>
+  </data>
+  
+  <!-- Chained Method Alignment -->
+  <data name="ChainedMethodAlignmentTitle" xml:space="preserve">
+    <value>Align chained method calls</value>
+    <comment>The title of the chained method alignment diagnostic.</comment>
+  </data>
+  <data name="ChainedMethodAlignmentMessageFormat" xml:space="preserve">
+    <value>Chained method calls should be on separate lines</value>
+    <comment>The format-able message for chained method alignment.</comment>
+  </data>
+  <data name="ChainedMethodAlignmentDescription" xml:space="preserve">
+    <value>Ensures chained method calls are placed on separate lines with proper indentation.</value>
+    <comment>Description for chained method alignment.</comment>
   </data>
 </root>

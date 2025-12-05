@@ -1,6 +1,53 @@
-# EnSharper - Code Align Extension for Visual Studio
+# EnSharper - Code Alignment for Visual Studio
 
-A Visual Studio extension that provides code formatting functionality with alignment features for C# code.
+Code alignment tools for C# that integrate seamlessly with Visual Studio's formatting and code cleanup features.
+
+## Projects
+
+### CodeAlignFix (Recommended)
+**Roslyn-based analyzer and code fix provider** - The modern approach using Roslyn analyzers.
+
+✅ **Advantages:**
+- Integrates with Visual Studio's native "Code Cleanup" feature
+- Works with `Ctrl+S` save and format-on-save
+- Configurable per-project via `.editorconfig`
+- Cross-IDE support (VS, VS Code, Rider)
+- Can be enforced during CI/CD builds
+- No custom shortcuts needed
+
+📖 [See CodeAlignFix README](CodeAlignFix/README.md) for details.
+
+### CodeAlign (Legacy)
+**VS Extension with custom shortcuts** - The original implementation using VS Extensibility.
+
+⚠️ **Note:** This is the legacy approach. New users should use CodeAlignFix instead.
+
+## Quick Start
+
+### For New Projects (Recommended)
+```bash
+# Install the Roslyn analyzer package
+dotnet add package CodeAlignFix
+
+# Configure in .editorconfig (optional)
+# See CodeAlignFix/.editorconfig.example
+```
+
+### For Existing Projects (Legacy)
+Build and install the CodeAlign VSIX extension from the `CodeAlign` folder.
+
+## Comparison
+
+| Feature | CodeAlignFix (Roslyn) | CodeAlign (Extension) |
+|---------|----------------------|----------------------|
+| Integration with Code Cleanup | ✅ Yes | ❌ No |
+| Works with Format Document | ✅ Yes | ✅ Yes |
+| Works with Save (Ctrl+S) | ✅ Via Code Cleanup | ✅ Via custom handler |
+| .editorconfig Support | ✅ Yes | ❌ No |
+| Cross-IDE Support | ✅ Yes (VS/VS Code/Rider) | ❌ VS only |
+| CI/CD Integration | ✅ Yes | ❌ No |
+| Configuration Scope | Per-project | Per-user (VS settings) |
+| Custom Shortcuts Needed | ❌ No | ✅ Yes |
 
 ## Features
 

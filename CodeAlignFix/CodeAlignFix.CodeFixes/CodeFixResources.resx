@@ -117,8 +117,25 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="CodeFixTitle" xml:space="preserve">
-    <value>Make uppercase</value>
-    <comment>The title of the code fix.</comment>
+  <!-- Code Fix Titles -->
+  <data name="AlignAssignmentsCodeFixTitle" xml:space="preserve">
+    <value>Align assignments</value>
+    <comment>The title of the assignment alignment code fix.</comment>
+  </data>
+  <data name="AlignObjectInitializerCodeFixTitle" xml:space="preserve">
+    <value>Align object initializer</value>
+    <comment>The title of the object initializer alignment code fix.</comment>
+  </data>
+  <data name="AlignParametersCodeFixTitle" xml:space="preserve">
+    <value>Align parameters</value>
+    <comment>The title of the parameter alignment code fix.</comment>
+  </data>
+  <data name="AlignArgumentsCodeFixTitle" xml:space="preserve">
+    <value>Align arguments</value>
+    <comment>The title of the argument alignment code fix.</comment>
+  </data>
+  <data name="AlignChainedMethodsCodeFixTitle" xml:space="preserve">
+    <value>Align chained methods</value>
+    <comment>The title of the chained method alignment code fix.</comment>
   </data>
 </root>
