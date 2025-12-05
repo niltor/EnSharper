@@ -5,4 +5,8 @@
     <Platform Name="x86" />
   </Configurations>
   <Project Path="CodeAlign/CodeAlign.csproj" Id="a5b046bc-4b8d-4ff9-8d1c-e6438885dcee" />
+  <Project Path="CodeAlignFix/CodeAlignFix.CodeFixes/CodeAlignFix.CodeFixes.csproj" Id="46894b45-bfb3-436b-a95f-769cf3f7510b" />
+  <Project Path="CodeAlignFix/CodeAlignFix.Package/CodeAlignFix.Package.csproj" Id="be719fd8-d5c6-4910-99ee-6b9334e38add" />
+  <Project Path="CodeAlignFix/CodeAlignFix.Test/CodeAlignFix.Test.csproj" Id="f3502a59-7574-4947-962b-03696254dfb2" />
+  <Project Path="CodeAlignFix/CodeAlignFix/CodeAlignFix.csproj" Id="00466d6b-9065-40b1-8efa-df1a284fde86" />
 </Solution>
