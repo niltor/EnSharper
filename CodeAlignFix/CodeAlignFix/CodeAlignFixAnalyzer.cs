@@ -13,6 +13,9 @@ namespace CodeAlignFix
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     public class CodeAlignFixAnalyzer : DiagnosticAnalyzer
     {
+        // Configuration constants
+        private const int AlignmentToleranceCharacters = 2; // Tolerance for considering code already aligned
+        
         // Diagnostic IDs
         public const string AssignmentAlignmentId = "CAF001";
         public const string ObjectInitializerAlignmentId = "CAF002";
@@ -30,8 +33,7 @@ namespace CodeAlignFix
             Category,
             DiagnosticSeverity.Info,
             isEnabledByDefault: true,
-            description: new LocalizableResourceString(nameof(Resources.AssignmentAlignmentDescription), Resources.ResourceManager, typeof(Resources)),
-            customTags: WellKnownDiagnosticTags.Unnecessary);
+            description: new LocalizableResourceString(nameof(Resources.AssignmentAlignmentDescription), Resources.ResourceManager, typeof(Resources)));
 
         // Object Initializer Alignment Rule
         private static readonly DiagnosticDescriptor ObjectInitializerAlignmentRule = new DiagnosticDescriptor(
@@ -41,8 +43,7 @@ namespace CodeAlignFix
             Category,
             DiagnosticSeverity.Info,
             isEnabledByDefault: true,
-            description: new LocalizableResourceString(nameof(Resources.ObjectInitializerAlignmentDescription), Resources.ResourceManager, typeof(Resources)),
-            customTags: WellKnownDiagnosticTags.Unnecessary);
+            description: new LocalizableResourceString(nameof(Resources.ObjectInitializerAlignmentDescription), Resources.ResourceManager, typeof(Resources)));
 
         // Parameter Alignment Rule
         private static readonly DiagnosticDescriptor ParameterAlignmentRule = new DiagnosticDescriptor(
@@ -52,8 +53,7 @@ namespace CodeAlignFix
             Category,
             DiagnosticSeverity.Info,
             isEnabledByDefault: true,
-            description: new LocalizableResourceString(nameof(Resources.ParameterAlignmentDescription), Resources.ResourceManager, typeof(Resources)),
-            customTags: WellKnownDiagnosticTags.Unnecessary);
+            description: new LocalizableResourceString(nameof(Resources.ParameterAlignmentDescription), Resources.ResourceManager, typeof(Resources)));
 
         // Argument Alignment Rule
         private static readonly DiagnosticDescriptor ArgumentAlignmentRule = new DiagnosticDescriptor(
@@ -63,8 +63,7 @@ namespace CodeAlignFix
             Category,
             DiagnosticSeverity.Info,
             isEnabledByDefault: true,
-            description: new LocalizableResourceString(nameof(Resources.ArgumentAlignmentDescription), Resources.ResourceManager, typeof(Resources)),
-            customTags: WellKnownDiagnosticTags.Unnecessary);
+            description: new LocalizableResourceString(nameof(Resources.ArgumentAlignmentDescription), Resources.ResourceManager, typeof(Resources)));
 
         // Chained Method Alignment Rule
         private static readonly DiagnosticDescriptor ChainedMethodAlignmentRule = new DiagnosticDescriptor(
@@ -74,8 +73,7 @@ namespace CodeAlignFix
             Category,
             DiagnosticSeverity.Info,
             isEnabledByDefault: true,
-            description: new LocalizableResourceString(nameof(Resources.ChainedMethodAlignmentDescription), Resources.ResourceManager, typeof(Resources)),
-            customTags: WellKnownDiagnosticTags.Unnecessary);
+            description: new LocalizableResourceString(nameof(Resources.ChainedMethodAlignmentDescription), Resources.ResourceManager, typeof(Resources)));
 
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics
         {
@@ -394,9 +392,9 @@ namespace CodeAlignFix
             if (positions.Count <= 1)
                 return true;
 
-            // Check if all have same spacing (within tolerance of 1 char)
+            // Check if all have same spacing (within tolerance)
             var firstVarPos = positions[0].varPos;
-            return positions.All(p => Math.Abs(p.varPos - firstVarPos) <= 2);
+            return positions.All(p => Math.Abs(p.varPos - firstVarPos) <= AlignmentToleranceCharacters);
         }
 
         private static bool IsFieldGroupAligned(List<FieldDeclarationSyntax> fields, int maxGap)
@@ -409,7 +407,7 @@ namespace CodeAlignFix
                 .ToList();
 
             var firstPos = positions[0];
-            return positions.All(p => Math.Abs(p - firstPos) <= 2);
+            return positions.All(p => Math.Abs(p - firstPos) <= AlignmentToleranceCharacters);
         }
 
         private static bool IsObjectInitializerAligned(List<AssignmentExpressionSyntax> assignments, int maxGap)
@@ -422,7 +420,7 @@ namespace CodeAlignFix
                 .ToList();
 
             var firstPos = positions[0];
-            return positions.All(p => Math.Abs(p - firstPos) <= 2);
+            return positions.All(p => Math.Abs(p - firstPos) <= AlignmentToleranceCharacters);
         }
 
         private static bool AreParametersOnSeparateLines(ParameterListSyntax parameterList)

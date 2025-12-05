@@ -17,6 +17,8 @@ namespace CodeAlignFix
     [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(CodeAlignFixCodeFixProvider)), Shared]
     public class CodeAlignFixCodeFixProvider : CodeFixProvider
     {
+        private const int DefaultIndentationSpaces = 4;
+        private const string DefaultFallbackIndentation = "        "; // 8 spaces (2 levels)
         public sealed override ImmutableArray<string> FixableDiagnosticIds
         {
             get
@@ -719,13 +721,13 @@ namespace CodeAlignFix
 
                 if (!string.IsNullOrEmpty(lastWhitespace))
                 {
-                    return lastWhitespace + "    ";
+                    return lastWhitespace + new string(' ', DefaultIndentationSpaces);
                 }
 
                 current = current.Parent;
             }
 
-            return "        ";
+            return DefaultFallbackIndentation;
         }
     }
 }
