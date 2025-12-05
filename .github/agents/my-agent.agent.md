@@ -6,6 +6,7 @@
 
 name: VS Extension
 description: VS Extension
+model: gemini-3-pro
 ---
 
 # My Agent
