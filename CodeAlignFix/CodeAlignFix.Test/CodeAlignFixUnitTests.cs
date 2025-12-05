@@ -224,14 +224,14 @@ namespace TestNamespace
     {
         void TestMethod()
         {
-            var result = new[] { 1, 2, 3 }.Where(x => x > 1).Select(x => x * 2).ToList();
+            var result = {|#0:new[] { 1, 2, 3 }.Where(x => x > 1).Select(x => x * 2).ToList()|};
         }
     }
 }";
 
-            // Chained method detection in method bodies
-            // The analyzer should detect this as it's inside a method body
-            await VerifyCS.VerifyAnalyzerAsync(test);
+            // Chained method detection in method bodies - should trigger diagnostic
+            var expected = VerifyCS.Diagnostic(CodeAlignFixAnalyzer.ChainedMethodAlignmentId).WithLocation(0);
+            await VerifyCS.VerifyAnalyzerAsync(test, expected);
         }
 
         [TestMethod]

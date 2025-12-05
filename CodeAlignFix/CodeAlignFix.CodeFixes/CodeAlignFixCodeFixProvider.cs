@@ -345,6 +345,9 @@ namespace CodeAlignFix
                 varPositions.Add(varEndPos);
             }
 
+            if (varPositions.Count == 0)
+                return statements;
+
             var maxVarPos = varPositions.Max();
 
             var result = new List<StatementSyntax>();
@@ -366,17 +369,14 @@ namespace CodeAlignFix
             var typePositions = fields.Select(GetTypeEndPosition).ToList();
             var maxTypePos = typePositions.Max();
 
-            var varPositions = new List<int>();
-            foreach (var field in fields)
-            {
-                var firstVar = field.Declaration.Variables.FirstOrDefault();
-                if (firstVar != null)
-                {
-                    var varName = firstVar.Identifier.Text;
-                    var varEndPos = maxTypePos + 1 + varName.Length;
-                    varPositions.Add(varEndPos);
-                }
-            }
+            var varPositions = fields
+                .Select(field => field.Declaration.Variables.FirstOrDefault())
+                .Where(firstVar => firstVar != null)
+                .Select(firstVar => maxTypePos + 1 + firstVar.Identifier.Text.Length)
+                .ToList();
+
+            if (varPositions.Count == 0)
+                return fields.Cast<MemberDeclarationSyntax>().ToList();
 
             var maxVarPos = varPositions.Max();
 
@@ -688,14 +688,9 @@ namespace CodeAlignFix
             var typeText = field.Declaration.Type.ToString().Trim();
             var modifiers = field.Modifiers.ToFullString();
 
-            if (string.IsNullOrEmpty(modifiers.Trim()))
-            {
-                return typeText.Length;
-            }
-            else
-            {
-                return modifiers.TrimEnd().Length + 1 + typeText.Length;
-            }
+            return string.IsNullOrEmpty(modifiers.Trim())
+                ? typeText.Length
+                : modifiers.TrimEnd().Length + 1 + typeText.Length;
         }
 
         private string DetectIndentation(SyntaxNode node)
@@ -705,23 +700,23 @@ namespace CodeAlignFix
             {
                 var leadingTrivia = current.GetLeadingTrivia();
 
-                string lastWhitespace = "";
+                var lastWhitespace = new System.Text.StringBuilder();
                 for (int i = 0; i < leadingTrivia.Count; i++)
                 {
                     var trivia = leadingTrivia[i];
                     if (trivia.IsKind(SyntaxKind.EndOfLineTrivia))
                     {
-                        lastWhitespace = "";
+                        lastWhitespace.Clear();
                     }
                     else if (trivia.IsKind(SyntaxKind.WhitespaceTrivia))
                     {
-                        lastWhitespace += trivia.ToFullString();
+                        lastWhitespace.Append(trivia.ToFullString());
                     }
                 }
 
-                if (!string.IsNullOrEmpty(lastWhitespace))
+                if (lastWhitespace.Length > 0)
                 {
-                    return lastWhitespace + new string(' ', DefaultIndentationSpaces);
+                    return lastWhitespace.ToString() + new string(' ', DefaultIndentationSpaces);
                 }
 
                 current = current.Parent;

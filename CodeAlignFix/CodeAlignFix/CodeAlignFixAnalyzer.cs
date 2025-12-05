@@ -279,19 +279,15 @@ namespace CodeAlignFix
             var invocation = (InvocationExpressionSyntax)context.Node;
             
             // Check for argument alignment
-            if (invocation.ArgumentList != null)
+            var argumentThreshold = GetArgumentThresholdOption(context);
+            if (invocation.ArgumentList != null &&
+                invocation.ArgumentList.Arguments.Count >= argumentThreshold &&
+                !AreArgumentsOnSeparateLines(invocation.ArgumentList))
             {
-                var argumentThreshold = GetArgumentThresholdOption(context);
-                if (invocation.ArgumentList.Arguments.Count >= argumentThreshold)
-                {
-                    if (!AreArgumentsOnSeparateLines(invocation.ArgumentList))
-                    {
-                        var diagnostic = Diagnostic.Create(
-                            ArgumentAlignmentRule,
-                            invocation.ArgumentList.GetLocation());
-                        context.ReportDiagnostic(diagnostic);
-                    }
-                }
+                var diagnostic = Diagnostic.Create(
+                    ArgumentAlignmentRule,
+                    invocation.ArgumentList.GetLocation());
+                context.ReportDiagnostic(diagnostic);
             }
 
             // Check for chained method alignment
@@ -303,7 +299,8 @@ namespace CodeAlignFix
 
             if (invocation.Expression is MemberAccessExpressionSyntax)
             {
-                var chainLength = CountMethodCallsInChain(invocation.Expression);
+                // Count includes the outermost invocation (the one we're analyzing)
+                var chainLength = CountMethodCallsInChain(invocation);
                 var minChainLength = GetMinChainLengthOption(context);
 
                 if (chainLength >= minChainLength && !AreMethodCallsOnSeparateLines(invocation.Expression))
@@ -392,6 +389,12 @@ namespace CodeAlignFix
             if (positions.Count <= 1)
                 return true;
 
+            // Check if gap exceeds maxGap
+            var maxVarPos = positions.Max(p => p.varPos);
+            var minVarPos = positions.Min(p => p.varPos);
+            if (maxGap > 0 && maxVarPos - minVarPos > maxGap)
+                return false;
+
             // Check if all have same spacing (within tolerance)
             var firstVarPos = positions[0].varPos;
             return positions.All(p => Math.Abs(p.varPos - firstVarPos) <= AlignmentToleranceCharacters);
@@ -406,6 +409,11 @@ namespace CodeAlignFix
                 .Select(f => f.Declaration.Variables.FirstOrDefault()?.Identifier.Span.End ?? 0)
                 .ToList();
 
+            var maxPos = positions.Max();
+            var minPos = positions.Min();
+            if (maxGap > 0 && maxPos - minPos > maxGap)
+                return false; // Don't align if gap is too large
+
             var firstPos = positions[0];
             return positions.All(p => Math.Abs(p - firstPos) <= AlignmentToleranceCharacters);
         }
@@ -418,6 +426,11 @@ namespace CodeAlignFix
             var positions = assignments
                 .Select(a => a.Left.Span.End)
                 .ToList();
+
+            var maxPos = positions.Max();
+            var minPos = positions.Min();
+            if (maxGap > 0 && maxPos - minPos > maxGap)
+                return false; // Don't align if gap is too large
 
             var firstPos = positions[0];
             return positions.All(p => Math.Abs(p - firstPos) <= AlignmentToleranceCharacters);
@@ -449,16 +462,25 @@ namespace CodeAlignFix
             return true;
         }
 
-        private static int CountMethodCallsInChain(ExpressionSyntax expression)
+        private static int CountMethodCallsInChain(InvocationExpressionSyntax invocation)
         {
-            int count = 0;
-            var current = expression;
+            // Count method calls by walking down the expression tree
+            int count = 1; // Count the outermost invocation
+            var current = invocation.Expression;
 
             while (current is MemberAccessExpressionSyntax memberAccess)
             {
-                if (memberAccess.Parent is InvocationExpressionSyntax)
+                // Check if the inner expression is also an invocation
+                if (memberAccess.Expression is InvocationExpressionSyntax innerInvocation)
+                {
                     count++;
-                current = memberAccess.Expression;
+                    current = innerInvocation.Expression;
+                }
+                else
+                {
+                    // Just a property/field access, keep going
+                    current = memberAccess.Expression;
+                }
             }
 
             return count;
