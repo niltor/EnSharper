@@ -367,53 +367,62 @@ namespace CodeAlignFix
 
         private static bool IsAligned(List<StatementSyntax> statements, int maxGap)
         {
-            // Simple check: if trivia is identical, consider it aligned
-            // A more sophisticated check would verify actual column positions
-            var triviaTexts = statements
-                .Select(GetAssignmentTrivia)
-                .Where(t => t != null)
-                .Distinct()
-                .ToList();
-
-            return triviaTexts.Count == 1;
-        }
-
-        private static string GetAssignmentTrivia(StatementSyntax statement)
-        {
-            if (statement is LocalDeclarationStatementSyntax localDecl)
+            // Check if assignments are already aligned by comparing spacing patterns
+            var positions = new List<(int typePos, int varPos)>();
+            
+            foreach (var stmt in statements)
             {
-                var firstVar = localDecl.Declaration.Variables.FirstOrDefault();
-                if (firstVar?.Initializer != null)
-                    return firstVar.Identifier.TrailingTrivia.ToFullString();
-            }
-            else if (statement is ExpressionStatementSyntax expr &&
-                     expr.Expression is AssignmentExpressionSyntax assignment)
-            {
-                return assignment.Left.GetTrailingTrivia().ToFullString();
+                if (stmt is LocalDeclarationStatementSyntax localDecl)
+                {
+                    var firstVar = localDecl.Declaration.Variables.FirstOrDefault();
+                    if (firstVar?.Initializer != null)
+                    {
+                        // Get actual character positions
+                        var typeEnd = localDecl.Declaration.Type.Span.End;
+                        var varEnd = firstVar.Identifier.Span.End;
+                        positions.Add((typeEnd, varEnd));
+                    }
+                }
+                else if (stmt is ExpressionStatementSyntax expr &&
+                         expr.Expression is AssignmentExpressionSyntax assignment)
+                {
+                    var leftEnd = assignment.Left.Span.End;
+                    positions.Add((0, leftEnd));
+                }
             }
 
-            return null;
+            if (positions.Count <= 1)
+                return true;
+
+            // Check if all have same spacing (within tolerance of 1 char)
+            var firstVarPos = positions[0].varPos;
+            return positions.All(p => Math.Abs(p.varPos - firstVarPos) <= 2);
         }
 
         private static bool IsFieldGroupAligned(List<FieldDeclarationSyntax> fields, int maxGap)
         {
-            var triviaTexts = fields
-                .Select(f => f.Declaration.Variables.FirstOrDefault()?.Identifier.TrailingTrivia.ToFullString())
-                .Where(t => t != null)
-                .Distinct()
+            if (fields.Count <= 1)
+                return true;
+
+            var positions = fields
+                .Select(f => f.Declaration.Variables.FirstOrDefault()?.Identifier.Span.End ?? 0)
                 .ToList();
 
-            return triviaTexts.Count == 1;
+            var firstPos = positions[0];
+            return positions.All(p => Math.Abs(p - firstPos) <= 2);
         }
 
         private static bool IsObjectInitializerAligned(List<AssignmentExpressionSyntax> assignments, int maxGap)
         {
-            var triviaTexts = assignments
-                .Select(a => a.Left.GetTrailingTrivia().ToFullString())
-                .Distinct()
+            if (assignments.Count <= 1)
+                return true;
+
+            var positions = assignments
+                .Select(a => a.Left.Span.End)
                 .ToList();
 
-            return triviaTexts.Count == 1;
+            var firstPos = positions[0];
+            return positions.All(p => Math.Abs(p - firstPos) <= 2);
         }
 
         private static bool AreParametersOnSeparateLines(ParameterListSyntax parameterList)
