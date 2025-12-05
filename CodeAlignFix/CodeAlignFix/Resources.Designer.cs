@@ -70,35 +70,167 @@ namespace CodeAlignFix
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Type names should be all uppercase..
+        ///   Looks up a localized string similar to Align assignment operators.
         /// </summary>
-        internal static string AnalyzerDescription
+        internal static string AssignmentAlignmentTitle
         {
             get
             {
-                return ResourceManager.GetString("AnalyzerDescription", resourceCulture);
+                return ResourceManager.GetString("AssignmentAlignmentTitle", resourceCulture);
             }
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Type name &apos;{0}&apos; contains lowercase letters.
+        ///   Looks up a localized string similar to Consecutive assignments can be aligned.
         /// </summary>
-        internal static string AnalyzerMessageFormat
+        internal static string AssignmentAlignmentMessageFormat
         {
             get
             {
-                return ResourceManager.GetString("AnalyzerMessageFormat", resourceCulture);
+                return ResourceManager.GetString("AssignmentAlignmentMessageFormat", resourceCulture);
             }
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Type name contains lowercase letters.
+        ///   Looks up a localized string similar to Aligns assignment operators in consecutive variable declarations and field assignments..
         /// </summary>
-        internal static string AnalyzerTitle
+        internal static string AssignmentAlignmentDescription
         {
             get
             {
-                return ResourceManager.GetString("AnalyzerTitle", resourceCulture);
+                return ResourceManager.GetString("AssignmentAlignmentDescription", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Align object initializer properties.
+        /// </summary>
+        internal static string ObjectInitializerAlignmentTitle
+        {
+            get
+            {
+                return ResourceManager.GetString("ObjectInitializerAlignmentTitle", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Object initializer properties can be aligned.
+        /// </summary>
+        internal static string ObjectInitializerAlignmentMessageFormat
+        {
+            get
+            {
+                return ResourceManager.GetString("ObjectInitializerAlignmentMessageFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Aligns assignment operators in object initializer expressions..
+        /// </summary>
+        internal static string ObjectInitializerAlignmentDescription
+        {
+            get
+            {
+                return ResourceManager.GetString("ObjectInitializerAlignmentDescription", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Align method parameters.
+        /// </summary>
+        internal static string ParameterAlignmentTitle
+        {
+            get
+            {
+                return ResourceManager.GetString("ParameterAlignmentTitle", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Method parameters should be aligned (one per line).
+        /// </summary>
+        internal static string ParameterAlignmentMessageFormat
+        {
+            get
+            {
+                return ResourceManager.GetString("ParameterAlignmentMessageFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Ensures method and constructor parameters are placed on separate lines when count exceeds threshold..
+        /// </summary>
+        internal static string ParameterAlignmentDescription
+        {
+            get
+            {
+                return ResourceManager.GetString("ParameterAlignmentDescription", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Align method arguments.
+        /// </summary>
+        internal static string ArgumentAlignmentTitle
+        {
+            get
+            {
+                return ResourceManager.GetString("ArgumentAlignmentTitle", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Method arguments should be aligned (one per line).
+        /// </summary>
+        internal static string ArgumentAlignmentMessageFormat
+        {
+            get
+            {
+                return ResourceManager.GetString("ArgumentAlignmentMessageFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Ensures method invocation arguments are placed on separate lines when count exceeds threshold..
+        /// </summary>
+        internal static string ArgumentAlignmentDescription
+        {
+            get
+            {
+                return ResourceManager.GetString("ArgumentAlignmentDescription", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Align chained method calls.
+        /// </summary>
+        internal static string ChainedMethodAlignmentTitle
+        {
+            get
+            {
+                return ResourceManager.GetString("ChainedMethodAlignmentTitle", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Chained method calls should be on separate lines.
+        /// </summary>
+        internal static string ChainedMethodAlignmentMessageFormat
+        {
+            get
+            {
+                return ResourceManager.GetString("ChainedMethodAlignmentMessageFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Ensures chained method calls are placed on separate lines with proper indentation..
+        /// </summary>
+        internal static string ChainedMethodAlignmentDescription
+        {
+            get
+            {
+                return ResourceManager.GetString("ChainedMethodAlignmentDescription", resourceCulture);
             }
         }
     }
